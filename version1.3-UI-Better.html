@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Text Animation Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lobster&family=Roboto+Mono&family=Pacifico&family=Poppins:wght@700&family=Playfair+Display:wght@700&family=Bangers&family=Oswald:wght@700&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .panel {
+            background-color: #2a2a2a;
+            border: 1px solid #3c3c3c;
+        }
+        .sub-panel {
+            background-color: #222222;
+        }
+        .header-gradient {
+            background: -webkit-linear-gradient(45deg, #38bdf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2a2a2a; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #777; }
+
+        /* Inputs and Buttons */
+        input[type="text"], input[type="number"], select {
+            background-color: #333;
+            border: 1px solid #4f4f4f;
+            color: #e0e0e0;
+        }
+        input:focus, select:focus {
+            border-color: #38bdf8;
+            --tw-ring-color: rgba(56, 189, 248, 0.3);
+        }
+        .btn-primary { background-color: #38bdf8; color: #1a1a1a; }
+        .btn-primary:hover { background-color: #7dd3fc; }
+        .btn-danger { background-color: #f43f5e; color: white; }
+        .btn-danger:hover { background-color: #fb7185; }
+        
+        /* Tabs */
+        .tab-button {
+            color: #a0a0a0;
+            transition: all 0.2s;
+        }
+        .tab-button.active {
+            color: white;
+            background-color: #3c3c3c;
+        }
+        
+        /* Timeline */
+        #timeline-ruler {
+            background-image: linear-gradient(to right, #444 1px, transparent 1px);
+            background-size: 25px 100%; /* Minor ticks */
+        }
+        .timeline-clip {
+            cursor: grab;
+            border-left: 5px solid;
+        }
+        .timeline-clip:active { cursor: grabbing; }
+        .clip-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            cursor: ew-resize;
+            z-index: 10;
+        }
+        .clip-handle.left { left: 0; }
+        .clip-handle.right { right: 0; }
+        
+        /* Font Previews */
+        select option { background-color: #333; color: #e0e0e0; }
+        #font-family-select option.font-lobster { font-family: 'Lobster', cursive; }
+        #font-family-select option.font-poppins { font-family: 'Poppins', sans-serif; font-weight: 700; }
+        #font-family-select option.font-roboto-mono { font-family: 'Roboto Mono', monospace; }
+        #font-family-select option.font-pacifico { font-family: 'Pacifico', cursive; }
+        #font-family-select option.font-inter { font-family: 'Inter', sans-serif; font-weight: 700; }
+        #font-family-select option.font-playfair { font-family: 'Playfair Display', serif; font-weight: 700; }
+        #font-family-select option.font-bangers { font-family: 'Bangers', cursive; }
+        #font-family-select option.font-oswald { font-family: 'Oswald', sans-serif; font-weight: 700; }
+        #font-family-select option.font-merriweather { font-family: 'Merriweather', serif; font-weight: 700; }
+    </style>
+</head>
+<body class="h-screen flex flex-col p-2 md:p-4 gap-4">
+
+    <header class="text-center flex-shrink-0">
+        <h1 class="text-3xl font-bold header-gradient">Pro Text Animation Editor</h1>
+    </header>
+
+    <div class="flex-grow flex flex-col md:flex-row gap-4 overflow-hidden">
+        
+        <!-- Left Column -->
+        <div class="w-full md:w-1/4 flex flex-col gap-4">
+             <!-- Combined Clips/Export Panel -->
+            <div class="panel rounded-lg p-4 flex flex-col h-full overflow-hidden">
+                <!-- Tabs -->
+                <nav class="flex-shrink-0 flex space-x-1 rounded-md p-1 bg-gray-800/50 mb-4">
+                    <button data-left-tab="clips" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded active">Clips</button>
+                    <button data-left-tab="export" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Export</button>
+                </nav>
+
+                <!-- Tab Content Area -->
+                <div class="flex-grow overflow-hidden">
+                    <!-- Clips Panel Content -->
+                    <div id="left-tab-clips" class="left-tab-panel h-full flex flex-col">
+                        <div class="flex gap-2 mb-3 flex-shrink-0">
+                            <button id="add-layer-btn" class="flex-1 flex items-center justify-center gap-2 bg-sky-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-sky-600 transition-all text-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                Add Clip
+                            </button>
+                             <button id="delete-layer-btn" class="flex items-center justify-center gap-2 bg-red-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                        <div id="layers-list" class="space-y-2 flex-grow overflow-y-auto pr-2"></div>
+                    </div>
+                    <!-- Export Panel Content -->
+                    <div id="left-tab-export" class="left-tab-panel hidden h-full overflow-y-auto pr-2">
+                        <div class="space-y-4">
+                             <div>
+                                <label for="export-resolution" class="block text-sm font-medium text-gray-400 mb-1">Resolution</label>
+                                <select id="export-resolution" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm focus:ring-2 focus:ring-sky-500">
+                                    <option value="640x360">360p (640x360)</option>
+                                    <option value="854x480">480p (854x480)</option>
+                                    <option value="1280x720" selected>720p (1280x720)</option>
+                                    <option value="1920x1080">1080p (1920x1080)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="bg-color" class="block text-sm font-medium text-gray-400 mb-1">Background</label>
+                                <input type="color" id="bg-color" value="#1a1a1a" class="w-full h-9 p-1 bg-gray-700 border border-gray-600 rounded-md cursor-pointer">
+                            </div>
+                            <div>
+                                <label for="total-duration-input" class="block text-sm font-medium text-gray-400 mb-1">Timeline Duration (s)</label>
+                                <input type="number" id="total-duration-input" value="5" min="1" max="300" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm focus:ring-2 focus:ring-sky-500">
+                            </div>
+                            <div id="recording-controls" class="space-y-3 pt-3 border-t border-gray-600">
+                                 <button id="start-btn" class="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-bold py-2 px-4 rounded-md hover:bg-green-700 transition-all shadow-md">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2zm0 15c-2.76 0-5-2.24-5-5s2.24-5 5-5s5 2.24 5 5s-2.24 5-5 5z"/><path fill="currentColor" d="M12 9.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5s-1.12-2.5-2.5-2.5z"/></svg>
+                                    Record
+                                </button>
+                            </div>
+                            <div id="download-section" class="hidden text-center">
+                                <a id="download-link" class="mt-2 inline-block w-full bg-sky-500 text-white font-bold py-2 px-4 rounded-md hover:bg-sky-600 transition-all">
+                                    Download Video
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Center Column -->
+        <div class="w-full md:w-1/2 flex flex-col gap-4">
+            <!-- Viewer -->
+            <div id="viewer-panel" class="panel rounded-lg p-2 flex-grow flex items-center justify-center">
+                 <div class="w-full h-full relative">
+                    <canvas id="animation-canvas" class="w-full h-full object-contain"></canvas>
+                    <div id="recording-indicator" class="hidden absolute top-3 right-3 w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
+                </div>
+            </div>
+            <!-- Timeline Controls -->
+             <div id="timeline-controls" class="panel rounded-lg p-3 flex-shrink-0 flex items-center justify-center gap-4">
+                 <button id="preview-play-pause-btn" class="flex items-center justify-center w-10 h-10 bg-gray-600 text-white font-bold rounded-md hover:bg-gray-700 transition-all focus:outline-none">
+                    <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="hidden"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
+                <div class="text-gray-300 font-mono text-lg bg-gray-800/50 px-4 py-1 rounded-md">
+                    <span id="current-time-display">0.0</span> / <span id="total-time-display">5.0</span>s
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column (Inspector) -->
+        <div class="w-full md:w-1/4">
+            <div id="inspector-panel" class="panel rounded-lg p-4 h-full overflow-y-auto">
+                 <h2 class="text-lg font-bold mb-3 border-b border-gray-600 pb-2">Inspector</h2>
+                 <div id="element-controls" class="hidden">
+                    <!-- Tabs -->
+                    <nav class="flex space-x-1 rounded-md p-1 bg-gray-800/50 mb-4">
+                        <button data-tab="style" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded active">Style</button>
+                        <button data-tab="transform" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Transform</button>
+                        <button data-tab="animation" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Animation</button>
+                        <button data-tab="effects" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Effects</button>
+                    </nav>
+                     <!-- Tab Content -->
+                    <div id="tab-content" class="space-y-4 text-sm">
+                        <section id="tab-style" class="tab-panel space-y-3">
+                             <input type="text" id="text-input" class="w-full rounded-md p-2" placeholder="Text Content">
+                             <select id="font-family-select" class="w-full rounded-md p-2"></select>
+                             <div class="grid grid-cols-2 gap-2">
+                                <input type="number" id="font-size" min="1" class="w-full rounded-md p-2" placeholder="Size">
+                                <input type="color" id="text-color" class="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md cursor-pointer">
+                             </div>
+                             <div class="pt-2 border-t border-gray-600 space-y-3">
+                                <label class="font-semibold text-gray-400">Border</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="range" id="border-width" min="0" max="25" class="w-full self-center">
+                                    <input type="color" id="border-color" class="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md cursor-pointer">
+                                </div>
+                             </div>
+                        </section>
+                        <section id="tab-transform" class="tab-panel hidden space-y-3">
+                             <div class="grid grid-cols-2 gap-2">
+                                <input type="number" id="position-x" class="w-full rounded-md p-2" placeholder="X Pos">
+                                <input type="number" id="position-y" class="w-full rounded-md p-2" placeholder="Y Pos">
+                             </div>
+                             <div class="flex items-center gap-2">
+                                <input type="range" id="rotation" min="-180" max="180" class="w-full">
+                                <input type="number" id="rotation-input" min="-180" max="180" class="w-20 bg-gray-700 border border-gray-600 rounded-md p-2 text-center">
+                             </div>
+                        </section>
+                         <section id="tab-animation" class="tab-panel hidden space-y-3">
+                             <input type="number" id="start-time" min="0" step="0.1" class="w-full rounded-md p-2" placeholder="Start Time (s)">
+                             <select id="animation-style" class="w-full rounded-md p-2" title="In-Animation Style"></select>
+                             <input type="number" id="animation-duration" min="0.1" step="0.1" class="w-full rounded-md p-2" placeholder="In-Animation Duration (s)">
+                             <input type="number" id="stay-duration" min="0" step="0.1" class="w-full rounded-md p-2" placeholder="Stay Duration (s)">
+                             <select id="out-animation-style" class="w-full rounded-md p-2" title="Out-Animation Style"></select>
+                             <input type="number" id="out-animation-duration" min="0.1" step="0.1" class="w-full rounded-md p-2" placeholder="Out-Animation Duration (s)">
+                         </section>
+                        <section id="tab-effects" class="tab-panel hidden space-y-3">
+                             <label class="font-semibold text-gray-400">Drop Shadow</label>
+                            <input type="range" id="shadow-x" min="-100" max="100" title="Shadow X">
+                            <input type="range" id="shadow-y" min="-100" max="100" title="Shadow Y">
+                            <input type="range" id="shadow-blur" min="0" max="50" title="Shadow Blur">
+                            <input type="color" id="shadow-color" class="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md cursor-pointer">
+                        </section>
+                    </div>
+                </div>
+                 <div id="inspector-placeholder" class="text-center text-gray-500 py-20">
+                    <p>Select a clip in the timeline to edit its properties.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Timeline -->
+    <div id="timeline-panel" class="panel rounded-lg p-2 flex-shrink-0 h-48 flex flex-col">
+        <div id="timeline-ruler" class="h-6 w-full relative flex-shrink-0">
+             <div id="playhead" class="absolute top-0 h-full w-0.5 bg-sky-400 z-20"></div>
+        </div>
+        <div id="timeline-tracks" class="flex-grow overflow-x-auto relative">
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const canvas = document.getElementById('animation-canvas');
+            const ctx = canvas.getContext('2d');
+            const inspectorPanel = document.getElementById('inspector-panel');
+            const elementControls = document.getElementById('element-controls');
+            const inspectorPlaceholder = document.getElementById('inspector-placeholder');
+            const timelineRuler = document.getElementById('timeline-ruler');
+            const timelineTracks = document.getElementById('timeline-tracks');
+            const playhead = document.getElementById('playhead');
+
+            const globalControls = {
+                bgColor: document.getElementById('bg-color'),
+                addLayerBtn: document.getElementById('add-layer-btn'),
+                deleteLayerBtn: document.getElementById('delete-layer-btn'),
+                layersList: document.getElementById('layers-list'),
+                totalDurationInput: document.getElementById('total-duration-input'),
+                exportResolution: document.getElementById('export-resolution'),
+                startBtn: document.getElementById('start-btn'),
+                downloadLink: document.getElementById('download-link'),
+                downloadSection: document.getElementById('download-section'),
+                recordingIndicator: document.getElementById('recording-indicator'),
+                previewPlayPauseBtn: document.getElementById('preview-play-pause-btn'),
+                playIcon: document.getElementById('play-icon'),
+                pauseIcon: document.getElementById('pause-icon'),
+                currentTimeDisplay: document.getElementById('current-time-display'),
+                totalTimeDisplay: document.getElementById('total-time-display'),
+            };
+
+            const elementInputs = {
+                text: document.getElementById('text-input'),
+                fontFamily: document.getElementById('font-family-select'),
+                fontSize: document.getElementById('font-size'),
+                textColor: document.getElementById('text-color'),
+                positionX: document.getElementById('position-x'),
+                positionY: document.getElementById('position-y'),
+                rotation: document.getElementById('rotation'),
+                rotationInput: document.getElementById('rotation-input'),
+                borderWidth: document.getElementById('border-width'),
+                borderColor: document.getElementById('border-color'),
+                startTime: document.getElementById('start-time'),
+                animationStyle: document.getElementById('animation-style'),
+                animationDuration: document.getElementById('animation-duration'),
+                stayDuration: document.getElementById('stay-duration'),
+                outAnimationStyle: document.getElementById('out-animation-style'),
+                outAnimationDuration: document.getElementById('out-animation-duration'),
+                shadowX: document.getElementById('shadow-x'),
+                shadowY: document.getElementById('shadow-y'),
+                shadowBlur: document.getElementById('shadow-blur'),
+                shadowColor: document.getElementById('shadow-color'),
+            };
+
+            // --- State ---
+            let animationFrameId;
+            let mediaRecorder;
+            let recordedChunks = [];
+            let textElements = [];
+            let selectedElementId = null;
+            let globalState = {
+                bgColor: '#1a1a1a',
+                totalDuration: 5000,
+                pixelsPerSecond: 100,
+            };
+            let previewState = {
+                isPlaying: true,
+                time: 0,
+                lastTimestamp: 0,
+            };
+
+            // --- Populate Dynamic Selects ---
+            const fonts = ["Poppins","Inter","Lobster","Roboto Mono","Pacifico","Playfair Display","Bangers","Oswald","Merriweather"];
+            fonts.forEach(font => {
+                const option = document.createElement('option');
+                option.value = font;
+                option.textContent = font;
+                option.className = `font-${font.toLowerCase().replace(' ', '-')}`;
+                elementInputs.fontFamily.appendChild(option);
+            });
+
+            const inAnimations = { none: "None", fadeAndScale: "Fade & Scale In", slideIn: "Slide In From Left", typewriter: "Typewriter", pulse: "Pulse Once", riseUp: "Rise Up", dropIn: "Drop In (Bounce)", rotateIn: "Rotate In" };
+            const outAnimations = { none: "None", fadeOut: "Fade Out", slideOut: "Slide Out To Right", scaleOut: "Scale Out" };
+            for(const [key, value] of Object.entries(inAnimations)) {
+                elementInputs.animationStyle.innerHTML += `<option value="${key}">${value}</option>`;
+            }
+            for(const [key, value] of Object.entries(outAnimations)) {
+                elementInputs.outAnimationStyle.innerHTML += `<option value="${key}">${value}</option>`;
+            }
+
+
+            // --- State Management & UI Sync ---
+            function getSelectedElement() { return textElements.find(el => el.id === selectedElementId); }
+
+            function updateControlsUI() {
+                const el = getSelectedElement();
+                if (el) {
+                    elementControls.classList.remove('hidden');
+                    inspectorPlaceholder.classList.add('hidden');
+
+                    elementInputs.text.value = el.text;
+                    elementInputs.fontFamily.value = el.fontFamily;
+                    elementInputs.fontSize.value = el.fontSize;
+                    elementInputs.textColor.value = el.textColor;
+                    elementInputs.positionX.value = Math.round(el.relativeX * canvas.width);
+                    elementInputs.positionY.value = Math.round(el.relativeY * canvas.height);
+                    elementInputs.rotation.value = el.rotation;
+                    elementInputs.rotationInput.value = el.rotation;
+                    elementInputs.borderWidth.value = el.borderWidth;
+                    elementInputs.borderColor.value = el.borderColor;
+                    elementInputs.startTime.value = (el.startTime / 1000).toFixed(2);
+                    elementInputs.animationStyle.value = el.animationStyle;
+                    elementInputs.animationDuration.value = (el.animationDuration / 1000).toFixed(2);
+                    elementInputs.stayDuration.value = (el.stayDuration / 1000).toFixed(2);
+                    elementInputs.outAnimationStyle.value = el.outAnimationStyle;
+                    elementInputs.outAnimationDuration.value = (el.outAnimationDuration / 1000).toFixed(2);
+                    elementInputs.shadowX.value = el.shadowX;
+                    elementInputs.shadowY.value = el.shadowY;
+                    elementInputs.shadowBlur.value = el.shadowBlur;
+                    elementInputs.shadowColor.value = el.shadowColor;
+                    
+                    globalControls.deleteLayerBtn.disabled = false;
+                } else {
+                    elementControls.classList.add('hidden');
+                    inspectorPlaceholder.classList.remove('hidden');
+                    globalControls.deleteLayerBtn.disabled = true;
+                }
+            }
+
+            function renderLayersList() {
+                globalControls.layersList.innerHTML = '';
+                 textElements.forEach((el, i) => {
+                    const item = document.createElement('div');
+                    item.className = `p-2 border rounded-md flex items-center gap-3 text-sm cursor-pointer ${el.id === selectedElementId ? 'bg-sky-800/50 border-sky-500' : 'border-gray-600'}`;
+                    item.dataset.id = el.id;
+                    item.innerHTML = `<div class="w-3 h-3 rounded-sm flex-shrink-0" style="background-color:${el.textColor}"></div><span class="flex-grow truncate">${el.text || 'Untitled'}</span>`;
+                    item.addEventListener('click', () => selectElement(el.id));
+                    globalControls.layersList.appendChild(item);
+                });
+            }
+
+            function addElement() {
+                const newElement = {
+                    id: Date.now(),
+                    text: `Clip ${textElements.length + 1}`,
+                    fontFamily: 'Poppins', fontSize: 100, textColor: '#FFFFFF',
+                    relativeX: 0.5, relativeY: 0.5, rotation: 0,
+                    borderWidth: 0, borderColor: '#000000',
+                    startTime: 0,
+                    animationStyle: 'fadeAndScale', animationDuration: 500,
+                    stayDuration: 2000,
+                    outAnimationStyle: 'fadeOut', outAnimationDuration: 500,
+                    shadowX: 0, shadowY: 0, shadowBlur: 0, shadowColor: '#000000',
+                };
+                textElements.push(newElement);
+                selectElement(newElement.id);
+                renderTimeline();
+            }
+
+            function deleteElement() {
+                if (!selectedElementId) return;
+                textElements = textElements.filter(el => el.id !== selectedElementId);
+                selectElement(textElements.length > 0 ? textElements[0].id : null);
+                renderTimeline();
+            }
+
+            function selectElement(id) {
+                selectedElementId = id;
+                renderLayersList();
+                updateControlsUI();
+                renderTimeline();
+            }
+
+             // --- Timeline Rendering and Interaction ---
+            function renderRuler() {
+                timelineRuler.innerHTML = '';
+                const duration = globalState.totalDuration / 1000;
+                const totalWidth = duration * globalState.pixelsPerSecond;
+                timelineRuler.style.width = `${totalWidth}px`;
+                for(let i = 0; i <= duration; i++) {
+                    const mark = document.createElement('div');
+                    mark.className = 'absolute top-0 h-full flex items-end text-xs text-gray-500';
+                    mark.style.left = `${i * globalState.pixelsPerSecond}px`;
+                    mark.innerHTML = `<span class="transform -translate-x-1/2">${i}s</span>`;
+                    
+                    const tick = document.createElement('div');
+                    tick.className = 'absolute top-0 h-2 w-px bg-gray-500';
+                    tick.style.left = `${i * globalState.pixelsPerSecond}px`;
+
+                    timelineRuler.appendChild(mark);
+                    timelineRuler.appendChild(tick);
+                }
+                 // Add playhead back in
+                timelineRuler.appendChild(playhead);
+            }
+
+            function renderTimeline() {
+                timelineTracks.innerHTML = '';
+                timelineTracks.style.width = `${globalState.totalDuration / 1000 * globalState.pixelsPerSecond}px`;
+                
+                textElements.forEach((el, index) => {
+                    const clip = document.createElement('div');
+                    clip.className = `timeline-clip absolute h-10 rounded-md bg-gray-600 flex items-center px-2 text-sm truncate ${el.id === selectedElementId ? 'bg-sky-700' : ''}`;
+                    clip.style.left = `${el.startTime / 1000 * globalState.pixelsPerSecond}px`;
+                    const clipDuration = el.animationDuration + el.stayDuration + el.outAnimationDuration;
+                    clip.style.width = `${clipDuration / 1000 * globalState.pixelsPerSecond}px`;
+                    clip.style.top = `${index * 48}px`;
+                    clip.style.borderColor = el.textColor;
+                    clip.textContent = el.text;
+                    clip.dataset.id = el.id;
+
+                    clip.addEventListener('click', () => selectElement(el.id));
+
+                    const leftHandle = document.createElement('div');
+                    leftHandle.className = 'clip-handle left';
+                    const rightHandle = document.createElement('div');
+                    rightHandle.className = 'clip-handle right';
+                    clip.appendChild(leftHandle);
+                    clip.appendChild(rightHandle);
+                    
+                    timelineTracks.appendChild(clip);
+                });
+            }
+
+            const drawBase = () => { ctx.fillStyle = globalState.bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height); };
+            const applyRotation = (el) => { ctx.translate(el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.rotate(el.rotation * Math.PI / 180); }
+            const drawTextWithStyles = (textToDraw, el) => {
+                ctx.font = `bold ${el.fontSize}px '${el.fontFamily}', sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.shadowOffsetX = el.shadowX; ctx.shadowOffsetY = el.shadowY; ctx.shadowBlur = el.shadowBlur; ctx.shadowColor = el.shadowColor;
+                ctx.fillStyle = el.textColor; ctx.fillText(textToDraw, 0, 0);
+                if (el.borderWidth > 0) { ctx.shadowColor = 'rgba(0,0,0,0)'; ctx.lineWidth = el.borderWidth; ctx.strokeStyle = el.borderColor; ctx.strokeText(textToDraw, 0, 0); }
+            };
+
+            const animationStyles = {
+                none: (progress, el) => { ctx.save(); applyRotation(el); drawTextWithStyles(el.text, el); ctx.restore(); },
+                fadeAndScale: (progress, el) => { ctx.save(); const scale = 0.8 + progress * 0.2; ctx.globalAlpha = Math.sin(progress * Math.PI); applyRotation(el); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); },
+                slideIn: (progress, el) => { ctx.save(); const easedProgress = 1 - Math.pow(1 - progress, 3); const startX = -el.fontSize - Math.abs(el.relativeX * canvas.width); const x = startX + (easedProgress * (el.relativeX * canvas.width - startX)); ctx.globalAlpha = Math.sin(progress * Math.PI); ctx.translate(x, el.relativeY * canvas.height); ctx.rotate(el.rotation * Math.PI / 180); drawTextWithStyles(el.text, el); ctx.restore(); },
+                typewriter: (progress, el) => { ctx.save(); const len = Math.floor(el.text.length * progress); const displayedText = el.text.substring(0, len); applyRotation(el); drawTextWithStyles(displayedText, el); ctx.restore(); },
+                pulse: (progress, el) => { ctx.save(); const scale = 1 + Math.sin(progress * Math.PI) * 0.1;  ctx.globalAlpha = 0.5 + Math.sin(progress * Math.PI) * 0.5; applyRotation(el); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); },
+                riseUp: (progress, el) => { ctx.save(); const easedProgress = 1 - Math.pow(1 - progress, 4); const startY = canvas.height + el.fontSize; const y = startY - (easedProgress * (startY - (el.relativeY * canvas.height))); ctx.globalAlpha = Math.sin(progress * Math.PI); ctx.translate(el.relativeX * canvas.width, y); ctx.rotate(el.rotation * Math.PI / 180); drawTextWithStyles(el.text, el); ctx.restore(); },
+                dropIn: (progress, el) => { ctx.save(); const n1 = 7.5625; const d1 = 2.75; let easedProgress; if (progress < 1 / d1) { easedProgress = n1 * progress * progress; } else if (progress < 2 / d1) { easedProgress = n1 * (progress -= 1.5 / d1) * progress + 0.75; } else if (progress < 2.5 / d1) { easedProgress = n1 * (progress -= 2.25 / d1) * progress + 0.9375; } else { easedProgress = n1 * (progress -= 2.625 / d1) * progress + 0.984375; } const startY = -el.fontSize; const y = startY + (easedProgress * ((el.relativeY * canvas.height) - startY)); ctx.globalAlpha = progress < 0.1 ? progress * 10 : 1; ctx.translate(el.relativeX * canvas.width, y); ctx.rotate(el.rotation * Math.PI / 180); drawTextWithStyles(el.text, el); ctx.restore(); },
+                rotateIn: (progress, el) => { ctx.save(); const angle = (1 - progress) * -Math.PI / 2; const scale = 0.5 + progress * 0.5; ctx.globalAlpha = progress; ctx.translate(el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.rotate((el.rotation * Math.PI / 180) + angle); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); },
+                fadeOut: (progress, el) => { ctx.save(); ctx.globalAlpha = 1 - progress; applyRotation(el); drawTextWithStyles(el.text, el); ctx.restore(); },
+                slideOut: (progress, el) => { ctx.save(); const easedProgress = Math.pow(progress, 3); const x = (el.relativeX * canvas.width) + (easedProgress * (canvas.width - el.relativeX * canvas.width + el.fontSize*2)); ctx.globalAlpha = 1 - progress; ctx.translate(x, el.relativeY * canvas.height); ctx.rotate(el.rotation * Math.PI / 180); drawTextWithStyles(el.text, el); ctx.restore(); },
+                scaleOut: (progress, el) => { ctx.save(); const scale = 1 - progress; ctx.globalAlpha = 1 - progress; applyRotation(el); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); }
+            };
+
+            const draw = (time) => {
+                drawBase();
+                textElements.forEach(el => {
+                    if (time < el.startTime) return; 
+                    const localTime = time - el.startTime;
+                    const totalLifetime = el.animationDuration + el.stayDuration + el.outAnimationDuration;
+                    if (localTime > totalLifetime && totalLifetime > 0) return;
+                    if (localTime <= el.animationDuration) { const progress = el.animationDuration > 0 ? localTime / el.animationDuration : 1; animationStyles[el.animationStyle](progress, el); }
+                    else if (localTime <= el.animationDuration + el.stayDuration) { animationStyles['none'](1, el); }
+                    else { const outTime = localTime - (el.animationDuration + el.stayDuration); const progress = el.outAnimationDuration > 0 ? outTime / el.outAnimationDuration : 1; animationStyles[el.outAnimationStyle](progress, el); }
+                });
+            };
+            
+            const updateTimelineUI = () => {
+                globalControls.currentTimeDisplay.textContent = (previewState.time / 1000).toFixed(1);
+                globalControls.totalTimeDisplay.textContent = (globalState.totalDuration / 1000).toFixed(1);
+                playhead.style.left = `${previewState.time / 1000 * globalState.pixelsPerSecond}px`;
+            };
+
+            const previewAnimationLoop = (timestamp) => {
+                if (!previewState.lastTimestamp) previewState.lastTimestamp = timestamp;
+                if (previewState.isPlaying) { const deltaTime = timestamp - previewState.lastTimestamp; previewState.time += deltaTime; if (previewState.time > globalState.totalDuration) previewState.time = 0; }
+                previewState.lastTimestamp = timestamp;
+                draw(previewState.time);
+                updateTimelineUI();
+                animationFrameId = requestAnimationFrame(previewAnimationLoop);
+            };
+            
+            const startPreviewAnimation = () => { if (animationFrameId) cancelAnimationFrame(animationFrameId); previewState.lastTimestamp = 0; animationFrameId = requestAnimationFrame(previewAnimationLoop); };
+
+            const setupMediaRecorder = () => {
+                const stream = canvas.captureStream(30);
+                const options = { mimeType: 'video/webm; codecs=vp9' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) { options.mimeType = 'video/webm; codecs=vp8'; if (!MediaRecorder.isTypeSupported(options.mimeType)) options.mimeType = 'video/webm'; }
+                mediaRecorder = new MediaRecorder(stream, options);
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+                    globalControls.downloadLink.href = URL.createObjectURL(blob);
+                    globalControls.downloadLink.download = `pro_animation.mp4`;
+                    globalControls.downloadSection.classList.remove('hidden');
+                    globalControls.startBtn.disabled = false;
+                    globalControls.recordingIndicator.classList.add('hidden');
+                    previewState.isPlaying = true;
+                    globalControls.playIcon.classList.add('hidden');
+                    globalControls.pauseIcon.classList.remove('hidden');
+                    startPreviewAnimation();
+                };
+            };
+            const setCanvasResolution = (width, height) => {
+                canvas.width = width; canvas.height = height;
+                updateControlsUI(); 
+            };
+            
+            // --- Event Listeners ---
+            globalControls.addLayerBtn.addEventListener('click', addElement);
+            globalControls.deleteLayerBtn.addEventListener('click', deleteElement);
+            globalControls.bgColor.addEventListener('input', (e) => globalState.bgColor = e.target.value);
+            
+            globalControls.exportResolution.addEventListener('change', (e) => { const [width, height] = e.target.value.split('x').map(Number); setCanvasResolution(width, height); });
+
+            globalControls.totalDurationInput.addEventListener('input', (e) => {
+                globalState.totalDuration = Math.max(1000, parseInt(e.target.value, 10) * 1000);
+                updateTimelineUI();
+                renderTimeline();
+                renderRuler();
+            });
+
+            globalControls.previewPlayPauseBtn.addEventListener('click', () => {
+                previewState.isPlaying = !previewState.isPlaying;
+                if (previewState.isPlaying) { previewState.lastTimestamp = 0; globalControls.playIcon.classList.add('hidden'); globalControls.pauseIcon.classList.remove('hidden'); }
+                else { globalControls.playIcon.classList.remove('hidden'); globalControls.pauseIcon.classList.add('hidden'); }
+            });
+
+            // Left Panel Tabs
+            document.querySelectorAll('[data-left-tab]').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('[data-left-tab]').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelectorAll('.left-tab-panel').forEach(panel => panel.classList.add('hidden'));
+                    document.getElementById(`left-tab-${tab.dataset.leftTab}`).classList.remove('hidden');
+                });
+            });
+
+            // Inspector Tabs
+            document.querySelectorAll('[data-tab]').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('[data-tab]').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+                    document.getElementById(`tab-${tab.dataset.tab}`).classList.remove('hidden');
+                });
+            });
+
+            Object.keys(elementInputs).forEach(key => {
+                elementInputs[key].addEventListener('input', (e) => {
+                    const el = getSelectedElement();
+                    if (!el) return;
+                    let value = e.target.value;
+                     if (['fontSize', 'borderWidth', 'shadowX', 'shadowY', 'shadowBlur', 'positionX', 'positionY', 'rotation', 'rotationInput'].includes(key)) { value = parseInt(value, 10) || 0; }
+                     else if (['startTime', 'animationDuration', 'stayDuration', 'outAnimationDuration'].includes(key)) { value = parseFloat(value) * 1000; }
+                    
+                    if (key === 'rotationInput') { el.rotation = value; elementInputs.rotation.value = value; }
+                    else if (key === 'positionX') { el.relativeX = value / canvas.width; }
+                    else if (key === 'positionY') { el.relativeY = value / canvas.height; }
+                    else if (key === 'rotation') { el.rotation = value; elementInputs.rotationInput.value = value; }
+                    else { el[key] = value; }
+                    
+                    if (key === 'text' || key === 'textColor') renderLayersList();
+                    renderTimeline();
+                });
+            });
+
+             globalControls.startBtn.addEventListener('click', () => {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                previewState.isPlaying = false;
+                globalControls.playIcon.classList.remove('hidden');
+                globalControls.pauseIcon.classList.add('hidden');
+                recordedChunks = [];
+                globalControls.downloadSection.classList.add('hidden');
+                setupMediaRecorder();
+                mediaRecorder.start();
+                globalControls.startBtn.disabled = true;
+                globalControls.recordingIndicator.classList.remove('hidden');
+                const recordStartTime = Date.now();
+                function recordLoop() {
+                    const elapsedTime = Date.now() - recordStartTime;
+                    if (elapsedTime >= globalState.totalDuration) { draw(elapsedTime); if (mediaRecorder.state === 'recording') mediaRecorder.stop(); return; }
+                    draw(elapsedTime);
+                    requestAnimationFrame(recordLoop);
+                }
+                recordLoop();
+            });
+
+            // --- Initial Kick-off ---
+            setCanvasResolution(1280, 720);
+            addElement();
+            renderRuler();
+            startPreviewAnimation();
+        });
+    </script>
+</body>
+</html>
+

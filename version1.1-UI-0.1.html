@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Layer Text Animation Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Lobster&family=Roboto+Mono&family=Pacifico&family=Poppins:wght@700&family=Playfair+Display:wght@700&family=Bangers&family=Oswald:wght@700&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .controls-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+        .controls-panel::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        .controls-panel::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .controls-panel::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .controls-panel {
+            height: 90vh;
+            overflow-y: auto;
+        }
+        .disabled-button {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .recording-indicator {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+        .layer-item {
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .layer-item.selected {
+            background-color: #e0e7ff;
+            border-color: #4f46e5;
+            font-weight: 600;
+        }
+        input:focus, select:focus {
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(3px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+            --tw-ring-color: rgba(99, 102, 241, 0.5);
+        }
+        button {
+            transition: transform 0.1s ease-in-out;
+        }
+        button:hover {
+            transform: scale(1.02);
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        .header-gradient {
+            background: -webkit-linear-gradient(45deg, #4f46e5, #14b8a6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        /* Custom font previews in dropdown */
+        #font-family-select option.font-lobster { font-family: 'Lobster', cursive; }
+        #font-family-select option.font-poppins { font-family: 'Poppins', sans-serif; font-weight: 700; }
+        #font-family-select option.font-roboto-mono { font-family: 'Roboto Mono', monospace; }
+        #font-family-select option.font-pacifico { font-family: 'Pacifico', cursive; }
+        #font-family-select option.font-inter { font-family: 'Inter', sans-serif; font-weight: 700; }
+        #font-family-select option.font-playfair { font-family: 'Playfair Display', serif; font-weight: 700; }
+        #font-family-select option.font-bangers { font-family: 'Bangers', cursive; }
+        #font-family-select option.font-oswald { font-family: 'Oswald', sans-serif; font-weight: 700; }
+        #font-family-select option.font-merriweather { font-family: 'Merriweather', serif; font-weight: 700; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 header-gradient">Multi-Layer Text Animation Editor</h1>
+            <p class="text-lg text-gray-600 mt-2">Combine multiple text elements, each with its own animation and style.</p>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-8">
+
+            <!-- ==== CONTROLS PANEL ==== -->
+            <div class="w-full lg:w-1/3 bg-white p-6 rounded-2xl shadow-lg controls-panel">
+                <div id="controls-content">
+                    <h2 class="text-2xl font-bold mb-6 border-b pb-3">Canvas & Layers</h2>
+
+                    <!-- Layer Management -->
+                    <section>
+                         <div class="space-y-4">
+                            <div>
+                                <label for="bg-color" class="block text-sm font-medium text-gray-700 mb-1">Background Color</label>
+                                <input type="color" id="bg-color" value="#3b82f6" class="w-full h-10 p-1 bg-white border border-gray-300 rounded-lg cursor-pointer">
+                            </div>
+                            <div class="grid grid-cols-4 gap-2">
+                                <button id="add-layer-btn" class="col-span-2 flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg hover:bg-indigo-700 transition-all shadow-md">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    Add Layer
+                                </button>
+                                 <button id="delete-layer-btn" class="flex items-center justify-center gap-2 bg-red-600 text-white font-bold py-2 px-3 rounded-lg hover:bg-red-700 transition-all shadow-md disabled-button" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                </button>
+                                 <div class="flex flex-col gap-1">
+                                    <button id="move-layer-up-btn" class="flex items-center justify-center bg-gray-200 text-gray-700 font-bold p-1 rounded-md hover:bg-gray-300 transition-all disabled-button" disabled>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                                    </button>
+                                    <button id="move-layer-down-btn" class="flex items-center justify-center bg-gray-200 text-gray-700 font-bold p-1 rounded-md hover:bg-gray-300 transition-all disabled-button" disabled>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+                                    </button>
+                                </div>
+                            </div>
+                         </div>
+                         <div id="layers-list" class="mt-4 space-y-2"></div>
+                    </section>
+                    
+                    <div id="element-controls" class="hidden">
+                        <h2 class="text-2xl font-bold my-6 border-b pb-3">Selected Layer Controls</h2>
+                        <!-- Text Style -->
+                        <section>
+                            <h3 class="text-xl font-semibold mb-4">Text Style</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="text-input" class="block text-sm font-medium text-gray-700 mb-1">Text Content</label>
+                                    <input type="text" id="text-input" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                                </div>
+                                <div>
+                                    <label for="font-family-select" class="block text-sm font-medium text-gray-700 mb-1">Font Family</label>
+                                    <select id="font-family-select" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                                        <option value="Poppins" class="font-poppins">Poppins</option>
+                                        <option value="Inter" class="font-inter">Inter</option>
+                                        <option value="Lobster" class="font-lobster">Lobster</option>
+                                        <option value="Roboto Mono" class="font-roboto-mono">Roboto Mono</option>
+                                        <option value="Pacifico" class="font-pacifico">Pacifico</option>
+                                        <option value="Playfair Display" class="font-playfair">Playfair Display</option>
+                                        <option value="Bangers" class="font-bangers">Bangers</option>
+                                        <option value="Oswald" class="font-oswald">Oswald</option>
+                                        <option value="Merriweather" class="font-merriweather">Merriweather</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="font-size" class="block text-sm font-medium text-gray-700 mb-1">Font Size (px)</label>
+                                    <input type="number" id="font-size" min="10" max="400" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 transition">
+                                </div>
+                                <div>
+                                    <label for="text-color" class="block text-sm font-medium text-gray-700 mb-1">Text Color</label>
+                                    <input type="color" id="text-color" class="w-full h-10 p-1 bg-white border border-gray-300 rounded-lg cursor-pointer">
+                                </div>
+                            </div>
+                        </section>
+                         <!-- Position Controls -->
+                        <section class="mt-8 pt-6 border-t">
+                            <h3 class="text-xl font-semibold mb-4">Position & Rotation</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="position-x" class="block text-sm font-medium text-gray-700 mb-1">Position X (px)</label>
+                                    <input type="number" id="position-x" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 transition">
+                                </div>
+                                <div>
+                                    <label for="position-y" class="block text-sm font-medium text-gray-700 mb-1">Position Y (px)</label>
+                                    <input type="number" id="position-y" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 transition">
+                                </div>
+                            </div>
+                             <div class="mt-4">
+                                <label for="rotation" class="block text-sm font-medium text-gray-700 mb-1">Rotation (deg)</label>
+                                <input type="range" id="rotation" min="-180" max="180" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                        </section>
+
+                        <!-- Text Border -->
+                        <section class="mt-8 pt-6 border-t">
+                            <h3 class="text-xl font-semibold mb-4">Text Border</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="border-width" class="block text-sm font-medium text-gray-700 mb-1">Border Width (px)</label>
+                                    <input type="range" id="border-width" min="0" max="25" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                </div>
+                                <div>
+                                    <label for="border-color" class="block text-sm font-medium text-gray-700 mb-1">Border Color</label>
+                                    <input type="color" id="border-color" class="w-full h-10 p-1 bg-white border border-gray-300 rounded-lg cursor-pointer">
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Animation Controls -->
+                        <section class="mt-8 pt-6 border-t">
+                            <h3 class="text-xl font-semibold mb-4">Animation & Timeline</h3>
+                             <div class="space-y-4">
+                                <div>
+                                    <label for="start-time" class="block text-sm font-medium text-gray-700 mb-1">Start Time (seconds)</label>
+                                    <input type="number" id="start-time" min="0" step="0.1" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 transition">
+                                </div>
+                                <div>
+                                   <label for="animation-style" class="block text-sm font-medium text-gray-700 mb-1">In-Animation Style</label>
+                                    <select id="animation-style" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                                        <option value="none">None</option>
+                                        <option value="fadeAndScale">Fade & Scale In</option>
+                                        <option value="slideIn">Slide In From Left</option>
+                                        <option value="typewriter">Typewriter</option>
+                                        <option value="pulse">Pulse Once</option>
+                                        <option value="riseUp">Rise Up</option>
+                                        <option value="dropIn">Drop In (Bounce)</option>
+                                        <option value="rotateIn">Rotate In</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="animation-duration" class="block text-sm font-medium text-gray-700 mb-1">In-Animation Duration (s)</label>
+                                    <input type="number" id="animation-duration" min="0.1" step="0.1" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 transition">
+                                </div>
+                                <div>
+                                    <label for="stay-duration" class="block text-sm font-medium text-gray-700 mb-1">Stay Duration (s)</label>
+                                    <input type="number" id="stay-duration" min="0" step="0.1" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 transition">
+                                </div>
+                                <div>
+                                   <label for="out-animation-style" class="block text-sm font-medium text-gray-700 mb-1">Out-Animation Style</label>
+                                    <select id="out-animation-style" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                                        <option value="none">None</option>
+                                        <option value="fadeOut">Fade Out</option>
+                                        <option value="slideOut">Slide Out To Right</option>
+                                        <option value="scaleOut">Scale Out</option>
+                                    </select>
+                                </div>
+                                 <div>
+                                    <label for="out-animation-duration" class="block text-sm font-medium text-gray-700 mb-1">Out-Animation Duration (s)</label>
+                                    <input type="number" id="out-animation-duration" min="0.1" step="0.1" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 transition">
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Drop Shadow Controls -->
+                        <section class="mt-8 pt-6 border-t">
+                            <h3 class="text-xl font-semibold mb-4">Drop Shadow</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="shadow-x" class="block text-sm font-medium text-gray-700 mb-1">Horizontal Offset (X)</label>
+                                    <input type="range" id="shadow-x" min="-100" max="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                </div>
+                                <div>
+                                    <label for="shadow-y" class="block text-sm font-medium text-gray-700 mb-1">Vertical Offset (Y)</label>
+                                    <input type="range" id="shadow-y" min="-100" max="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                </div>
+                                <div>
+                                    <label for="shadow-blur" class="block text-sm font-medium text-gray-700 mb-1">Blur Radius</label>
+                                    <input type="range" id="shadow-blur" min="0" max="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                </div>
+                                <div>
+                                    <label for="shadow-color" class="block text-sm font-medium text-gray-700 mb-1">Shadow Color</label>
+                                    <input type="color" id="shadow-color" class="w-full h-10 p-1 bg-white border border-gray-300 rounded-lg cursor-pointer">
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==== PREVIEW PANEL ==== -->
+            <div class="w-full lg:w-2/3 relative">
+                <div>
+                    <div class="bg-white p-4 rounded-2xl shadow-lg aspect-w-16 aspect-h-9 relative">
+                        <div id="canvas-container" class="w-full h-full flex items-center justify-center overflow-hidden rounded-xl">
+                            <canvas id="animation-canvas" class="w-full h-full object-contain"></canvas>
+                            <div id="recording-indicator" class="hidden absolute top-5 right-5 w-6 h-6 bg-red-500 rounded-full recording-indicator"></div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-4 text-gray-500 text-sm">
+                        <p id="preview-resolution-text">Export Resolution: 1280x720 (720p)</p>
+                    </div>
+                    <div id="preview-controls" class="mt-4 flex items-center justify-center gap-4 bg-gray-200/50 p-3 rounded-lg">
+                        <button id="preview-play-pause-btn" class="flex items-center justify-center w-12 h-12 bg-indigo-600 text-white font-bold rounded-full hover:bg-indigo-700 transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                            <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="hidden"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </button>
+                        <div class="text-gray-700 font-mono text-lg bg-white px-4 py-2 rounded-md shadow-inner">
+                            <span id="current-time-display">0.0</span>s / <span id="total-time-display">5.0</span>s
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export Side Panel -->
+                <div id="export-panel" class="absolute top-0 right-0 h-full w-80 bg-white shadow-2xl p-6 rounded-l-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-20 overflow-y-auto">
+                    <h3 class="text-2xl font-bold mb-6 border-b pb-3">Export Video</h3>
+                    <div class="space-y-4">
+                         <div>
+                            <label for="export-resolution" class="block text-sm font-medium text-gray-700 mb-1">Export Resolution</label>
+                            <select id="export-resolution" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                                <option value="640x360">360p (640x360)</option>
+                                <option value="854x480">480p (854x480)</option>
+                                <option value="1280x720" selected>720p (1280x720)</option>
+                                <option value="1920x1080">1080p (1920x1080)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="total-duration-input" class="block text-sm font-medium text-gray-700 mb-1">Total Video Duration (seconds)</label>
+                            <input type="number" id="total-duration-input" value="5" min="1" max="60" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 transition">
+                        </div>
+                    </div>
+                     <div id="recording-controls" class="space-y-3 mt-6 pt-6 border-t">
+                         <button id="start-btn" class="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-all shadow-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+                            Start Recording
+                        </button>
+                         <p id="recording-duration-text" class="text-xs text-center text-gray-500">Record a 5-second clip.</p>
+                     </div>
+                     <div id="download-section" class="hidden mt-4 text-center">
+                        <p class="text-green-700 font-semibold">Recording complete!</p>
+                        <a id="download-link" class="mt-2 inline-block w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-all shadow-md">
+                            Download Video (.mp4)
+                        </a>
+                    </div>
+                </div>
+
+                 <!-- Toggle Button for Export Panel -->
+                 <button id="toggle-export-btn" class="absolute top-6 -right-5 bg-indigo-600 text-white p-3 rounded-full shadow-lg z-30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg id="export-icon-open" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <svg id="export-icon-close" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x hidden"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                 </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const canvas = document.getElementById('animation-canvas');
+            const ctx = canvas.getContext('2d');
+            const elementControlsContainer = document.getElementById('element-controls');
+            
+            const globalControls = {
+                bgColor: document.getElementById('bg-color'),
+                addLayerBtn: document.getElementById('add-layer-btn'),
+                deleteLayerBtn: document.getElementById('delete-layer-btn'),
+                moveLayerUpBtn: document.getElementById('move-layer-up-btn'),
+                moveLayerDownBtn: document.getElementById('move-layer-down-btn'),
+                layersList: document.getElementById('layers-list'),
+                totalDuration: document.getElementById('total-duration-input'),
+                exportResolution: document.getElementById('export-resolution'),
+                startBtn: document.getElementById('start-btn'),
+                downloadLink: document.getElementById('download-link'),
+                downloadSection: document.getElementById('download-section'),
+                recordingIndicator: document.getElementById('recording-indicator'),
+                recordingDurationText: document.getElementById('recording-duration-text'),
+                previewPlayPauseBtn: document.getElementById('preview-play-pause-btn'),
+                playIcon: document.getElementById('play-icon'),
+                pauseIcon: document.getElementById('pause-icon'),
+                currentTimeDisplay: document.getElementById('current-time-display'),
+                totalTimeDisplay: document.getElementById('total-time-display'),
+                previewResolutionText: document.getElementById('preview-resolution-text'),
+                exportPanel: document.getElementById('export-panel'),
+                toggleExportBtn: document.getElementById('toggle-export-btn'),
+                exportIconOpen: document.getElementById('export-icon-open'),
+                exportIconClose: document.getElementById('export-icon-close'),
+            };
+
+            const elementInputs = {
+                text: document.getElementById('text-input'),
+                fontFamily: document.getElementById('font-family-select'),
+                fontSize: document.getElementById('font-size'),
+                textColor: document.getElementById('text-color'),
+                positionX: document.getElementById('position-x'),
+                positionY: document.getElementById('position-y'),
+                rotation: document.getElementById('rotation'),
+                borderWidth: document.getElementById('border-width'),
+                borderColor: document.getElementById('border-color'),
+                startTime: document.getElementById('start-time'),
+                animationStyle: document.getElementById('animation-style'),
+                animationDuration: document.getElementById('animation-duration'),
+                stayDuration: document.getElementById('stay-duration'),
+                outAnimationStyle: document.getElementById('out-animation-style'),
+                outAnimationDuration: document.getElementById('out-animation-duration'),
+                shadowX: document.getElementById('shadow-x'),
+                shadowY: document.getElementById('shadow-y'),
+                shadowBlur: document.getElementById('shadow-blur'),
+                shadowColor: document.getElementById('shadow-color'),
+            };
+
+            // --- State ---
+            let animationFrameId;
+            let mediaRecorder;
+            let recordedChunks = [];
+            let textElements = [];
+            let selectedElementId = null;
+            let globalState = {
+                bgColor: '#3b82f6',
+                totalDuration: 5000,
+            };
+            let previewState = {
+                isPlaying: true,
+                time: 0,
+                lastTimestamp: 0,
+            };
+
+            // --- State Management & UI Sync ---
+
+            function getSelectedElement() {
+                return textElements.find(el => el.id === selectedElementId);
+            }
+            
+            function getSelectedElementIndex() {
+                return textElements.findIndex(el => el.id === selectedElementId);
+            }
+
+            function updateControlsUI() {
+                const el = getSelectedElement();
+                const index = getSelectedElementIndex();
+
+                if (el) {
+                    elementControlsContainer.classList.remove('hidden');
+                    elementInputs.text.value = el.text;
+                    elementInputs.fontFamily.value = el.fontFamily;
+                    elementInputs.fontSize.value = el.fontSize;
+                    elementInputs.textColor.value = el.textColor;
+                    elementInputs.positionX.value = Math.round(el.relativeX * canvas.width);
+                    elementInputs.positionY.value = Math.round(el.relativeY * canvas.height);
+                    elementInputs.rotation.value = el.rotation;
+                    elementInputs.borderWidth.value = el.borderWidth;
+                    elementInputs.borderColor.value = el.borderColor;
+                    elementInputs.startTime.value = el.startTime / 1000;
+                    elementInputs.animationStyle.value = el.animationStyle;
+                    elementInputs.animationDuration.value = el.animationDuration / 1000;
+                    elementInputs.stayDuration.value = el.stayDuration / 1000;
+                    elementInputs.outAnimationStyle.value = el.outAnimationStyle;
+                    elementInputs.outAnimationDuration.value = el.outAnimationDuration / 1000;
+                    elementInputs.shadowX.value = el.shadowX;
+                    elementInputs.shadowY.value = el.shadowY;
+                    elementInputs.shadowBlur.value = el.shadowBlur;
+                    elementInputs.shadowColor.value = el.shadowColor;
+                    
+                    globalControls.deleteLayerBtn.disabled = false;
+                    globalControls.deleteLayerBtn.classList.remove('disabled-button');
+
+                    globalControls.moveLayerUpBtn.disabled = index === 0;
+                    globalControls.moveLayerUpBtn.classList.toggle('disabled-button', index === 0);
+                    globalControls.moveLayerDownBtn.disabled = index === textElements.length - 1;
+                    globalControls.moveLayerDownBtn.classList.toggle('disabled-button', index === textElements.length - 1);
+
+                } else {
+                    elementControlsContainer.classList.add('hidden');
+                    globalControls.deleteLayerBtn.disabled = true;
+                    globalControls.deleteLayerBtn.classList.add('disabled-button');
+                    globalControls.moveLayerUpBtn.disabled = true;
+                    globalControls.moveLayerUpBtn.classList.add('disabled-button');
+                    globalControls.moveLayerDownBtn.disabled = true;
+                    globalControls.moveLayerDownBtn.classList.add('disabled-button');
+                }
+            }
+            
+            function renderLayersList() {
+                globalControls.layersList.innerHTML = '';
+                if (textElements.length === 0) {
+                     globalControls.layersList.innerHTML = `<p class="text-sm text-gray-500 text-center p-4">No layers yet. Add one to begin!</p>`;
+                }
+                // Render in reverse so top of the list is visually on top
+                [...textElements].reverse().forEach(el => {
+                    const item = document.createElement('div');
+                    item.className = `layer-item p-3 border rounded-lg ${el.id === selectedElementId ? 'selected' : 'border-gray-200'}`;
+                    item.textContent = el.text || 'Untitled';
+                    item.dataset.id = el.id;
+                    item.addEventListener('click', () => selectElement(el.id));
+                    globalControls.layersList.appendChild(item);
+                });
+            }
+            
+            function addElement() {
+                const newElement = {
+                    id: Date.now(),
+                    text: 'New Text',
+                    fontFamily: 'Poppins',
+                    fontSize: 100,
+                    textColor: '#FFFFFF',
+                    relativeX: 0.5, 
+                    relativeY: 0.5,
+                    rotation: 0,
+                    borderWidth: 2,
+                    borderColor: '#000000',
+                    startTime: 0,
+                    animationStyle: 'fadeAndScale',
+                    animationDuration: 1000,
+                    stayDuration: 3000,
+                    outAnimationStyle: 'fadeOut',
+                    outAnimationDuration: 1000,
+                    shadowX: 5,
+                    shadowY: 5,
+                    shadowBlur: 10,
+                    shadowColor: '#000000',
+                };
+                textElements.push(newElement);
+                selectElement(newElement.id);
+            }
+
+            function deleteElement() {
+                if (!selectedElementId) return;
+                const index = getSelectedElementIndex();
+                textElements.splice(index, 1);
+                
+                if (textElements.length > 0) {
+                    const newIndex = Math.max(0, index - 1);
+                    selectElement(textElements[newIndex].id);
+                } else {
+                    selectElement(null);
+                }
+            }
+
+            function moveLayer(direction) {
+                if (!selectedElementId) return;
+                const index = getSelectedElementIndex();
+                const newIndex = index + direction;
+
+                if (newIndex < 0 || newIndex >= textElements.length) return;
+
+                [textElements[index], textElements[newIndex]] = [textElements[newIndex], textElements[index]];
+                
+                renderLayersList();
+                updateControlsUI();
+            }
+
+            function selectElement(id) {
+                selectedElementId = id;
+                renderLayersList();
+                updateControlsUI();
+            }
+
+            // --- Animation Drawing Functions ---
+            const drawBase = () => {
+                ctx.fillStyle = globalState.bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            };
+            
+            const applyRotation = (el) => {
+                ctx.translate(el.relativeX * canvas.width, el.relativeY * canvas.height);
+                ctx.rotate(el.rotation * Math.PI / 180);
+            }
+
+            const drawTextWithStyles = (textToDraw, el) => {
+                ctx.font = `bold ${el.fontSize}px '${el.fontFamily}', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // Draw fill text with shadow
+                ctx.shadowOffsetX = el.shadowX;
+                ctx.shadowOffsetY = el.shadowY;
+                ctx.shadowBlur = el.shadowBlur;
+                ctx.shadowColor = el.shadowColor;
+                ctx.fillStyle = el.textColor;
+                ctx.fillText(textToDraw, 0, 0);
+
+                // Draw border on top, without shadow
+                if (el.borderWidth > 0) {
+                    ctx.shadowColor = 'rgba(0,0,0,0)';
+                    ctx.lineWidth = el.borderWidth;
+                    ctx.strokeStyle = el.borderColor;
+                    ctx.strokeText(textToDraw, 0, 0);
+                }
+            };
+
+            const animationStyles = {
+                none: (progress, el) => {
+                    ctx.save();
+                    applyRotation(el);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                },
+                fadeAndScale: (progress, el) => {
+                    ctx.save();
+                    const scale = 0.8 + progress * 0.2;
+                    ctx.globalAlpha = Math.sin(progress * Math.PI);
+                    applyRotation(el);
+                    ctx.scale(scale, scale);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                },
+                slideIn: (progress, el) => {
+                    ctx.save();
+                    const easedProgress = 1 - Math.pow(1 - progress, 3);
+                    const currentX = -canvas.width/2 + (easedProgress * (el.relativeX * canvas.width + canvas.width/2));
+                    ctx.globalAlpha = Math.sin(progress * Math.PI);
+                    // Temporarily override position for slide
+                    const tempEl = {...el, relativeX: currentX / canvas.width};
+                    drawTextWithStyles(el.text, el.relativeX * canvas.width, el.relativeY * canvas.height, el); // Incorrect, need to fix
+                    ctx.translate(currentX, el.relativeY * canvas.height);
+                    ctx.rotate(el.rotation * Math.PI / 180);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                },
+                typewriter: (progress, el) => {
+                    ctx.save();
+                    const len = Math.floor(el.text.length * progress);
+                    const displayedText = el.text.substring(0, len);
+                    applyRotation(el);
+                    drawTextWithStyles(displayedText, el);
+                    ctx.restore();
+                },
+                pulse: (progress, el) => {
+                    ctx.save();
+                    const scale = 1 + Math.sin(progress * Math.PI) * 0.1; 
+                    ctx.globalAlpha = 0.5 + Math.sin(progress * Math.PI) * 0.5;
+                    applyRotation(el);
+                    ctx.scale(scale, scale);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                },
+                riseUp: (progress, el) => {
+                    ctx.save();
+                    const easedProgress = 1 - Math.pow(1 - progress, 4);
+                    const startY = canvas.height + el.fontSize;
+                    const y = startY - (easedProgress * (startY - (el.relativeY * canvas.height)));
+                    ctx.globalAlpha = Math.sin(progress * Math.PI);
+                    ctx.translate(el.relativeX * canvas.width, y);
+                    ctx.rotate(el.rotation * Math.PI / 180);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                },
+                dropIn: (progress, el) => {
+                    ctx.save();
+                    const n1 = 7.5625; const d1 = 2.75; let easedProgress;
+                    if (progress < 1 / d1) { easedProgress = n1 * progress * progress; } 
+                    else if (progress < 2 / d1) { easedProgress = n1 * (progress -= 1.5 / d1) * progress + 0.75; } 
+                    else if (progress < 2.5 / d1) { easedProgress = n1 * (progress -= 2.25 / d1) * progress + 0.9375; } 
+                    else { easedProgress = n1 * (progress -= 2.625 / d1) * progress + 0.984375; }
+                    const startY = -el.fontSize;
+                    const y = startY + (easedProgress * ((el.relativeY * canvas.height) - startY));
+                    ctx.globalAlpha = progress < 0.1 ? progress * 10 : 1;
+                    ctx.translate(el.relativeX * canvas.width, y);
+                    ctx.rotate(el.rotation * Math.PI / 180);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                },
+                rotateIn: (progress, el) => {
+                    ctx.save();
+                    const angle = (1 - progress) * -Math.PI / 2;
+                    const scale = 0.5 + progress * 0.5;
+                    ctx.globalAlpha = progress;
+                    ctx.translate(el.relativeX * canvas.width, el.relativeY * canvas.height);
+                    ctx.rotate((el.rotation * Math.PI / 180) + angle);
+                    ctx.scale(scale, scale);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                },
+                 // --- Out Animations ---
+                fadeOut: (progress, el) => { // progress is 0 to 1
+                    ctx.save();
+                    ctx.globalAlpha = 1 - progress;
+                    applyRotation(el);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                },
+                slideOut: (progress, el) => {
+                    ctx.save();
+                    const easedProgress = Math.pow(progress, 3);
+                    const x = (el.relativeX * canvas.width) + (easedProgress * (canvas.width - el.relativeX * canvas.width + el.fontSize));
+                    ctx.globalAlpha = 1 - progress;
+                    ctx.translate(x, el.relativeY * canvas.height);
+                    ctx.rotate(el.rotation * Math.PI / 180);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                },
+                scaleOut: (progress, el) => {
+                    ctx.save();
+                    const scale = 1 - progress;
+                    ctx.globalAlpha = 1 - progress;
+                    applyRotation(el);
+                    ctx.scale(scale, scale);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                }
+            };
+            
+            const draw = (time) => {
+                drawBase();
+                textElements.forEach(el => {
+                    if (time < el.startTime) return; 
+
+                    const localTime = time - el.startTime;
+                    const totalLifetime = el.animationDuration + el.stayDuration + el.outAnimationDuration;
+
+                    if (localTime > totalLifetime) return;
+
+                    if (localTime <= el.animationDuration) {
+                        // Phase 1: In-Animation
+                        const progress = el.animationDuration > 0 ? localTime / el.animationDuration : 1;
+                        animationStyles[el.animationStyle](progress, el);
+                    } else if (localTime <= el.animationDuration + el.stayDuration) {
+                        // Phase 2: Stay
+                        animationStyles['none'](1, el); // Use none animation to just draw it
+                    } else {
+                        // Phase 3: Out-Animation
+                        const outTime = localTime - (el.animationDuration + el.stayDuration);
+                        const progress = el.outAnimationDuration > 0 ? outTime / el.outAnimationDuration : 1;
+                        animationStyles[el.outAnimationStyle](progress, el);
+                    }
+                });
+            };
+            
+            const updateTimelineUI = () => {
+                globalControls.currentTimeDisplay.textContent = (previewState.time / 1000).toFixed(1);
+                globalControls.totalTimeDisplay.textContent = (globalState.totalDuration / 1000).toFixed(1);
+            };
+
+            const previewAnimationLoop = (timestamp) => {
+                if (!previewState.lastTimestamp) {
+                    previewState.lastTimestamp = timestamp;
+                }
+
+                if (previewState.isPlaying) {
+                    const deltaTime = timestamp - previewState.lastTimestamp;
+                    previewState.time += deltaTime;
+                    if (previewState.time > globalState.totalDuration) {
+                        previewState.time = 0; // Loop it
+                    }
+                }
+                
+                previewState.lastTimestamp = timestamp;
+
+                draw(previewState.time);
+                updateTimelineUI();
+
+                animationFrameId = requestAnimationFrame(previewAnimationLoop);
+            };
+            
+            const startPreviewAnimation = () => {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                previewState.lastTimestamp = 0;
+                animationFrameId = requestAnimationFrame(previewAnimationLoop);
+            };
+
+            // --- Media Recorder Logic ---
+            const setupMediaRecorder = () => {
+                const stream = canvas.captureStream(30);
+                const options = { mimeType: 'video/webm; codecs=vp9' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options.mimeType = 'video/webm; codecs=vp8';
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        options.mimeType = 'video/webm';
+                    }
+                }
+                mediaRecorder = new MediaRecorder(stream, options);
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+                    globalControls.downloadLink.href = URL.createObjectURL(blob);
+                    globalControls.downloadLink.download = `multi-layer_animation.mp4`;
+                    globalControls.downloadSection.classList.remove('hidden');
+                    globalControls.startBtn.disabled = false;
+                    globalControls.startBtn.classList.remove('disabled-button');
+                    globalControls.recordingIndicator.classList.add('hidden');
+                    
+                    previewState.isPlaying = true;
+                    globalControls.playIcon.classList.add('hidden');
+                    globalControls.pauseIcon.classList.remove('hidden');
+                    startPreviewAnimation();
+                };
+            };
+
+            const setCanvasResolution = (width, height) => {
+                canvas.width = width;
+                canvas.height = height;
+                
+                const optionText = globalControls.exportResolution.options[globalControls.exportResolution.selectedIndex].text;
+                globalControls.previewResolutionText.textContent = `Export Resolution: ${optionText}`;
+                updateControlsUI(); 
+            };
+            
+            // --- Event Listeners ---
+            globalControls.addLayerBtn.addEventListener('click', addElement);
+            globalControls.deleteLayerBtn.addEventListener('click', deleteElement);
+            globalControls.moveLayerUpBtn.addEventListener('click', () => moveLayer(-1));
+            globalControls.moveLayerDownBtn.addEventListener('click', () => moveLayer(1));
+            globalControls.bgColor.addEventListener('input', (e) => globalState.bgColor = e.target.value);
+            
+            globalControls.exportResolution.addEventListener('change', (e) => {
+                const [width, height] = e.target.value.split('x').map(Number);
+                setCanvasResolution(width, height);
+            });
+
+            globalControls.totalDuration.addEventListener('input', (e) => {
+                globalState.totalDuration = parseInt(e.target.value, 10) * 1000;
+                globalControls.recordingDurationText.textContent = `Record a ${e.target.value}-second clip.`;
+                updateTimelineUI();
+            });
+
+            globalControls.previewPlayPauseBtn.addEventListener('click', () => {
+                previewState.isPlaying = !previewState.isPlaying;
+                if (previewState.isPlaying) {
+                    previewState.lastTimestamp = 0; 
+                    globalControls.playIcon.classList.add('hidden');
+                    globalControls.pauseIcon.classList.remove('hidden');
+                } else {
+                    globalControls.playIcon.classList.remove('hidden');
+                    globalControls.pauseIcon.classList.add('hidden');
+                }
+            });
+
+            globalControls.toggleExportBtn.addEventListener('click', () => {
+                globalControls.exportPanel.classList.toggle('translate-x-full');
+                globalControls.exportIconOpen.classList.toggle('hidden');
+                globalControls.exportIconClose.classList.toggle('hidden');
+            });
+
+            Object.keys(elementInputs).forEach(key => {
+                elementInputs[key].addEventListener('input', (e) => {
+                    const el = getSelectedElement();
+                    if (!el) return;
+                    let value = e.target.value;
+                     if (['fontSize', 'borderWidth', 'shadowX', 'shadowY', 'shadowBlur', 'positionX', 'positionY', 'rotation'].includes(key)) {
+                        value = parseInt(value, 10) || 0;
+                    } else if (['startTime', 'animationDuration', 'stayDuration', 'outAnimationDuration'].includes(key)) {
+                        value = parseFloat(value) * 1000;
+                    }
+
+                    if (key === 'positionX') el.relativeX = value / canvas.width;
+                    else if (key === 'positionY') el.relativeY = value / canvas.height;
+                    else el[key] = value;
+                    
+                    if (key === 'text') renderLayersList();
+                });
+            });
+
+            globalControls.startBtn.addEventListener('click', () => {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                previewState.isPlaying = false;
+                globalControls.playIcon.classList.remove('hidden');
+                globalControls.pauseIcon.classList.add('hidden');
+
+                recordedChunks = [];
+                globalControls.downloadSection.classList.add('hidden');
+                setupMediaRecorder();
+                mediaRecorder.start();
+                globalControls.startBtn.disabled = true;
+                globalControls.startBtn.classList.add('disabled-button');
+                globalControls.recordingIndicator.classList.remove('hidden');
+
+                const recordStartTime = Date.now();
+                
+                function recordLoop() {
+                    const elapsedTime = Date.now() - recordStartTime;
+                    if (elapsedTime >= globalState.totalDuration) {
+                        draw(elapsedTime);
+                        if (mediaRecorder.state === 'recording') mediaRecorder.stop();
+                        return;
+                    }
+                    draw(elapsedTime);
+                    requestAnimationFrame(recordLoop);
+                }
+                recordLoop();
+            });
+
+            // --- Initial Kick-off ---
+            setCanvasResolution(1280, 720);
+            addElement();
+            startPreviewAnimation();
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Text Animation Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lobster&family=Roboto+Mono&family=Pacifico&family=Poppins:wght@700&family=Playfair+Display:wght@700&family=Bangers&family=Oswald:wght@700&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .panel {
+            background-color: #2a2a2a;
+            border: 1px solid #3c3c3c;
+        }
+        .sub-panel {
+            background-color: #222222;
+        }
+        .header-gradient {
+            background: -webkit-linear-gradient(45deg, #38bdf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2a2a2a; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #777; }
+
+        /* Inputs and Buttons */
+        input[type="text"], input[type="number"], select, textarea {
+            background-color: #333;
+            border: 1px solid #4f4f4f;
+            color: #e0e0e0;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
+        }
+        
+        /* Tabs */
+        .tab-button {
+            color: #a0a0a0;
+            transition: all 0.2s;
+        }
+        .tab-button.active {
+            color: white;
+            background-color: #3c3c3c;
+        }
+        
+        /* Timeline */
+        #timeline-ruler {
+            background-image: linear-gradient(to right, #444 1px, transparent 1px);
+            background-size: 25px 100%; /* Minor ticks */
+        }
+        .timeline-clip {
+            cursor: grab;
+            border-left: 5px solid;
+            position: absolute;
+        }
+        .timeline-clip:active { cursor: grabbing; }
+        .clip-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            cursor: ew-resize;
+            z-index: 10;
+        }
+        .clip-handle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 20px;
+            background-color: rgba(255,255,255,0.5);
+            border-radius: 2px;
+        }
+        .clip-handle.left { left: 0; }
+        .clip-handle.right { right: 0; }
+        #timeline-panel {
+            cursor: pointer;
+        }
+        #animation-canvas {
+            cursor: grab;
+        }
+        #animation-canvas.grabbing {
+            cursor: grabbing;
+        }
+        
+        /* Font Previews */
+        select option { background-color: #333; color: #e0e0e0; }
+        #font-family-select option.font-lobster { font-family: 'Lobster', cursive; }
+        #font-family-select option.font-poppins { font-family: 'Poppins', sans-serif; font-weight: 700; }
+        #font-family-select option.font-roboto-mono { font-family: 'Roboto Mono', monospace; }
+        #font-family-select option.font-pacifico { font-family: 'Pacifico', cursive; }
+        #font-family-select option.font-inter { font-family: 'Inter', sans-serif; font-weight: 700; }
+        #font-family-select option.font-playfair { font-family: 'Playfair Display', serif; font-weight: 700; }
+        #font-family-select option.font-bangers { font-family: 'Bangers', cursive; }
+        #font-family-select option.font-oswald { font-family: 'Oswald', sans-serif; font-weight: 700; }
+        #font-family-select option.font-merriweather { font-family: 'Merriweather', serif; font-weight: 700; }
+
+        /* Modal */
+        #modal-backdrop {
+            background-color: rgba(0,0,0,0.7);
+            z-index: 999;
+        }
+        #modal-content {
+            background-color: #2a2a2a;
+            transform: translateY(-20px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        #modal-backdrop:not(.hidden) #modal-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col p-2 md:p-4 gap-4">
+
+    <header class="text-center flex-shrink-0">
+        <h1 class="text-3xl font-bold header-gradient">Pro Text Animation Editor</h1>
+    </header>
+
+    <div class="flex-grow flex flex-col md:flex-row gap-4 overflow-hidden">
+        
+        <!-- Left Column -->
+        <div class="w-full md:w-1/4 flex flex-col gap-4">
+              <!-- Combined Clips/Export Panel -->
+            <div class="panel rounded-lg p-4 flex flex-col h-full overflow-hidden">
+                  <!-- Tabs -->
+                  <nav class="flex-shrink-0 flex space-x-1 rounded-md p-1 bg-gray-800/50 mb-4">
+                      <button data-left-tab="clips" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded active">Clips</button>
+                      <button data-left-tab="subtitles" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Subtitles</button>
+                      <button data-left-tab="export" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Export</button>
+                  </nav>
+
+                  <!-- Tab Content Area -->
+                  <div class="flex-grow overflow-hidden">
+                      <!-- Clips Panel Content -->
+                      <div id="left-tab-clips" class="left-tab-panel h-full flex flex-col">
+                          <div class="flex gap-2 mb-3 flex-shrink-0">
+                              <button id="add-layer-btn" title="Add New Clip" class="flex-1 flex items-center justify-center gap-2 bg-sky-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-sky-600 transition-all text-sm">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                              </button>
+                              <button id="duplicate-layer-btn" title="Duplicate Selected Clip(s)" class="flex-1 flex items-center justify-center gap-2 bg-gray-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-700 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                              </button>
+                               <button id="delete-layer-btn" title="Delete Selected Clip(s)" class="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                              </button>
+                          </div>
+                          <div id="layers-list" class="space-y-2 flex-grow overflow-y-auto pr-2"></div>
+                      </div>
+                      <!-- Subtitles Panel Content -->
+                       <div id="left-tab-subtitles" class="left-tab-panel hidden h-full flex flex-col">
+                            <div class="flex gap-2 mb-3 flex-shrink-0">
+                                <button id="add-subtitle-btn" title="Add New Subtitle" class="flex-1 flex items-center justify-center gap-2 bg-sky-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-sky-600 transition-all text-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    <span>Add</span>
+                                </button>
+                                <button id="import-srt-btn" title="Import SRT file" class="flex-1 flex items-center justify-center gap-2 bg-gray-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-700 transition-all text-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                    <span>Import</span>
+                                </button>
+                            </div>
+                            <div id="subtitles-list" class="space-y-2 flex-grow overflow-y-auto pr-2">
+                                <!-- Subtitle items will be rendered here -->
+                            </div>
+                        </div>
+                      <!-- Export Panel Content -->
+                      <div id="left-tab-export" class="left-tab-panel hidden h-full overflow-y-auto pr-2">
+                          <div class="space-y-4">
+                                <div>
+                                    <label for="output-filename" class="block text-sm font-medium text-gray-400 mb-1">Output Name</label>
+                                    <input type="text" id="output-filename" value="pro_animation" class="w-full rounded-md p-2 text-sm">
+                                </div>
+                                <div>
+                                    <label for="export-resolution" class="block text-sm font-medium text-gray-400 mb-1">Resolution</label>
+                                    <select id="export-resolution" class="w-full rounded-md p-2 text-sm">
+                                        <option value="640x360">360p (640x360)</option>
+                                        <option value="854x480">480p (854x480)</option>
+                                        <option value="1280x720" selected>720p (1280x720)</option>
+                                        <option value="1920x1080">1080p (1920x1080)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="bg-color" class="block text-sm font-medium text-gray-400 mb-1">Background</label>
+                                    <input type="color" id="bg-color" value="#1a1a1a" class="w-full h-9 p-1 rounded-md cursor-pointer">
+                                </div>
+                                <div>
+                                    <label for="total-duration-input" class="block text-sm font-medium text-gray-400 mb-1">Timeline Duration (s)</label>
+                                    <input type="number" id="total-duration-input" value="5" min="1" max="300" class="w-full rounded-md p-2 text-sm">
+                                </div>
+                                <div id="recording-controls" class="space-y-3 pt-3 border-t border-gray-600">
+                                     <button id="start-btn" class="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-bold py-2 px-4 rounded-md hover:bg-green-700 transition-all shadow-md">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2zm0 15c-2.76 0-5-2.24-5-5s2.24-5 5-5s5 2.24 5 5s-2.24 5-5 5z"/><path fill="currentColor" d="M12 9.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5s-1.12-2.5-2.5-2.5z"/></svg>
+                                        Record
+                                    </button>
+                                </div>
+                                <div id="download-section" class="hidden text-center">
+                                    <a id="download-link" class="mt-2 inline-block w-full bg-sky-500 text-white font-bold py-2 px-4 rounded-md hover:bg-sky-600 transition-all">
+                                        Download Video
+                                    </a>
+                                </div>
+                          </div>
+                      </div>
+                  </div>
+            </div>
+        </div>
+
+
+        <!-- Center Column -->
+        <div class="w-full md:w-1/2 flex flex-col gap-4">
+            <!-- Viewer -->
+            <div id="viewer-panel" class="panel rounded-lg p-2 flex-grow flex items-center justify-center">
+                 <div class="w-full h-full relative">
+                    <canvas id="animation-canvas" class="w-full h-full object-contain"></canvas>
+                    <div id="recording-indicator" class="hidden absolute top-3 right-3 w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
+                </div>
+            </div>
+            <!-- Timeline Controls -->
+             <div id="timeline-controls" class="panel rounded-lg p-3 flex-shrink-0 flex flex-col gap-2">
+                <div class="flex items-center justify-center gap-4">
+                    <button id="preview-play-pause-btn" class="flex items-center justify-center w-10 h-10 bg-gray-600 text-white font-bold rounded-md hover:bg-gray-700 transition-all focus:outline-none">
+                        <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                        <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="hidden"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    </button>
+                    <div class="text-gray-300 font-mono text-lg bg-gray-800/50 px-4 py-1 rounded-md">
+                        <span id="current-time-display">0.0</span> / <span id="total-time-display">5.0</span>s
+                    </div>
+                </div>
+                <div class="w-full flex items-center gap-2 px-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                     <input type="range" id="timeline-zoom" min="20" max="500" value="100" class="w-full">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column (Inspector) -->
+        <div class="w-full md:w-1/4">
+            <div id="inspector-panel" class="panel rounded-lg p-4 h-full overflow-y-auto">
+                 <h2 class="text-lg font-bold mb-3 border-b border-gray-600 pb-2">Inspector</h2>
+                 <div id="element-controls" class="hidden">
+                     <!-- Preset Controls -->
+                     <div id="preset-controls" class="mb-4 border-b border-gray-600 pb-4">
+                         <label for="preset-select" class="block text-sm font-semibold text-gray-400 mb-2">Presets</label>
+                         <div class="flex gap-2">
+                             <select id="preset-select" class="flex-grow rounded-md p-2 text-sm">
+                                 <option value="">Apply a Preset...</option>
+                             </select>
+                             <button id="save-preset-btn" title="Save current settings as a new preset" class="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-sky-500 text-white rounded-md hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                             </button>
+                             <button id="delete-preset-btn" title="Delete selected preset" class="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                             </button>
+                         </div>
+                     </div>
+                     <!-- Tabs -->
+                     <nav id="inspector-tabs" class="flex space-x-1 rounded-md p-1 bg-gray-800/50 mb-4">
+                         <button data-tab="style" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded active">Style</button>
+                         <button data-tab="transform" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Transform</button>
+                         <button data-tab="animation" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Animation</button>
+                         <button data-tab="effects" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Effects</button>
+                     </nav>
+                      <!-- Tab Content -->
+                     <div id="tab-content" class="space-y-4 text-sm">
+                         <section id="tab-style" class="tab-panel space-y-3">
+                              <input type="text" id="text-input" class="w-full rounded-md p-2" placeholder="Text Content">
+                              <select id="font-family-select" class="w-full rounded-md p-2"></select>
+                              <div class="grid grid-cols-2 gap-2">
+                                  <input type="number" id="font-size" min="1" class="w-full rounded-md p-2" placeholder="Size">
+                                  <input type="color" id="text-color" class="w-full h-10 p-1 rounded-md cursor-pointer">
+                              </div>
+                              <div class="pt-2 border-t border-gray-600 space-y-3">
+                                  <label class="font-semibold text-gray-400">Border</label>
+                                  <div class="grid grid-cols-2 gap-2">
+                                      <input type="range" id="border-width" min="0" max="25" class="w-full self-center">
+                                      <input type="color" id="border-color" class="w-full h-10 p-1 rounded-md cursor-pointer">
+                                  </div>
+                              </div>
+                         </section>
+                         <section id="tab-transform" class="tab-panel hidden space-y-3">
+                              <div class="grid grid-cols-2 gap-2">
+                                  <input type="number" id="position-x" class="w-full rounded-md p-2" placeholder="X Pos">
+                                  <input type="number" id="position-y" class="w-full rounded-md p-2" placeholder="Y Pos">
+                              </div>
+                              <div class="flex items-center gap-2">
+                                  <input type="range" id="rotation" min="-180" max="180" class="w-full">
+                                  <input type="number" id="rotation-input" min="-180" max="180" class="w-20 rounded-md p-2 text-center">
+                              </div>
+                         </section>
+                          <section id="tab-animation" class="tab-panel hidden space-y-3">
+                              <input type="number" id="start-time" min="0" step="0.1" class="w-full rounded-md p-2" placeholder="Start Time (s)">
+                              <div class="grid grid-cols-2 gap-2">
+                                 <select id="animation-style" class="w-full rounded-md p-2" title="In-Animation Style"></select>
+                                 <select id="animation-easing" class="w-full rounded-md p-2" title="In-Animation Easing"></select>
+                              </div>
+                              <input type="number" id="animation-duration" min="0.1" step="0.1" class="w-full rounded-md p-2" placeholder="In-Animation Duration (s)">
+                              <input type="number" id="stay-duration" min="0" step="0.1" class="w-full rounded-md p-2" placeholder="Stay Duration (s)">
+                              <div class="grid grid-cols-2 gap-2">
+                                 <select id="out-animation-style" class="w-full rounded-md p-2" title="Out-Animation Style"></select>
+                                 <select id="out-animation-easing" class="w-full rounded-md p-2" title="Out-Animation Easing"></select>
+                              </div>
+                              <input type="number" id="out-animation-duration" min="0.1" step="0.1" class="w-full rounded-md p-2" placeholder="Out-Animation Duration (s)">
+                          </section>
+                         <section id="tab-effects" class="tab-panel hidden space-y-3">
+                              <label class="font-semibold text-gray-400">Drop Shadow</label>
+                             <input type="range" id="shadow-x" min="-100" max="100" title="Shadow X">
+                             <input type="range" id="shadow-y" min="-100" max="100" title="Shadow Y">
+                             <input type="range" id="shadow-blur" min="0" max="50" title="Shadow Blur">
+                             <input type="color" id="shadow-color" class="w-full h-10 p-1 rounded-md cursor-pointer">
+                         </section>
+                     </div>
+                 </div>
+                 <div id="inspector-placeholder" class="text-center text-gray-500 py-20">
+                     <p>Select a clip to edit its properties.</p>
+                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Timeline -->
+    <div id="timeline-panel" class="panel rounded-lg p-2 flex-shrink-0 h-48 flex flex-col">
+        <div class="w-full overflow-x-auto">
+            <div id="timeline-ruler" class="h-6 w-full relative flex-shrink-0">
+                 <div id="playhead" class="absolute top-0 h-full w-0.5 bg-sky-400 z-20 pointer-events-none"></div>
+            </div>
+        </div>
+        <div id="timeline-tracks-container" class="flex-grow overflow-auto relative">
+            <div id="main-tracks" class="relative"></div>
+            <div id="subtitle-track" class="relative pt-2 border-t border-dashed border-gray-600 mt-2"></div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 flex items-center justify-center p-4">
+        <div id="modal-content" class="w-full max-w-sm rounded-lg p-6 shadow-xl opacity-0">
+            <h3 id="modal-title" class="text-lg font-bold mb-4">Modal Title</h3>
+            <div id="modal-body" class="space-y-4">
+                <p id="modal-text"></p>
+                <input type="text" id="modal-input" class="w-full rounded-md p-2 text-sm">
+            </div>
+            <div id="modal-footer" class="flex justify-end gap-3 mt-6">
+                <button id="modal-cancel-btn" class="py-2 px-4 rounded-md bg-gray-600 hover:bg-gray-700 transition-colors">Cancel</button>
+                <button id="modal-confirm-btn" class="py-2 px-4 rounded-md bg-sky-500 hover:bg-sky-600 transition-colors text-white font-semibold">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const canvas = document.getElementById('animation-canvas');
+            const ctx = canvas.getContext('2d');
+            const inspectorPanel = document.getElementById('inspector-panel');
+            const elementControls = document.getElementById('element-controls');
+            const inspectorPlaceholder = document.getElementById('inspector-placeholder');
+            const inspectorTabs = document.getElementById('inspector-tabs');
+            const tabContent = document.getElementById('tab-content');
+            const timelineRuler = document.getElementById('timeline-ruler');
+            const mainTracks = document.getElementById('main-tracks');
+            const subtitleTrack = document.getElementById('subtitle-track');
+            const timelineTracksContainer = document.getElementById('timeline-tracks-container');
+            const timelinePanel = document.getElementById('timeline-panel');
+            const playhead = document.getElementById('playhead');
+
+            const globalControls = {
+                bgColor: document.getElementById('bg-color'),
+                addLayerBtn: document.getElementById('add-layer-btn'),
+                duplicateLayerBtn: document.getElementById('duplicate-layer-btn'),
+                deleteLayerBtn: document.getElementById('delete-layer-btn'),
+                layersList: document.getElementById('layers-list'),
+                addSubtitleBtn: document.getElementById('add-subtitle-btn'),
+                importSrtBtn: document.getElementById('import-srt-btn'),
+                subtitlesList: document.getElementById('subtitles-list'),
+                totalDurationInput: document.getElementById('total-duration-input'),
+                outputFilename: document.getElementById('output-filename'),
+                exportResolution: document.getElementById('export-resolution'),
+                startBtn: document.getElementById('start-btn'),
+                downloadLink: document.getElementById('download-link'),
+                downloadSection: document.getElementById('download-section'),
+                recordingIndicator: document.getElementById('recording-indicator'),
+                previewPlayPauseBtn: document.getElementById('preview-play-pause-btn'),
+                playIcon: document.getElementById('play-icon'),
+                pauseIcon: document.getElementById('pause-icon'),
+                currentTimeDisplay: document.getElementById('current-time-display'),
+                totalTimeDisplay: document.getElementById('total-time-display'),
+                timelineZoom: document.getElementById('timeline-zoom'),
+            };
+
+            const elementInputs = {
+                text: document.getElementById('text-input'),
+                fontFamily: document.getElementById('font-family-select'),
+                fontSize: document.getElementById('font-size'),
+                textColor: document.getElementById('text-color'),
+                positionX: document.getElementById('position-x'),
+                positionY: document.getElementById('position-y'),
+                rotation: document.getElementById('rotation'),
+                rotationInput: document.getElementById('rotation-input'),
+                borderWidth: document.getElementById('border-width'),
+                borderColor: document.getElementById('border-color'),
+                startTime: document.getElementById('start-time'),
+                animationStyle: document.getElementById('animation-style'),
+                animationEasing: document.getElementById('animation-easing'),
+                animationDuration: document.getElementById('animation-duration'),
+                stayDuration: document.getElementById('stay-duration'),
+                outAnimationStyle: document.getElementById('out-animation-style'),
+                outAnimationEasing: document.getElementById('out-animation-easing'),
+                outAnimationDuration: document.getElementById('out-animation-duration'),
+                shadowX: document.getElementById('shadow-x'),
+                shadowY: document.getElementById('shadow-y'),
+                shadowBlur: document.getElementById('shadow-blur'),
+                shadowColor: document.getElementById('shadow-color'),
+                presetSelect: document.getElementById('preset-select'),
+                savePresetBtn: document.getElementById('save-preset-btn'),
+                deletePresetBtn: document.getElementById('delete-preset-btn'),
+            };
+            
+            const modalElements = {
+                backdrop: document.getElementById('modal-backdrop'),
+                content: document.getElementById('modal-content'),
+                title: document.getElementById('modal-title'),
+                body: document.getElementById('modal-body'),
+                text: document.getElementById('modal-text'),
+                input: document.getElementById('modal-input'),
+                footer: document.getElementById('modal-footer'),
+                confirmBtn: document.getElementById('modal-confirm-btn'),
+                cancelBtn: document.getElementById('modal-cancel-btn'),
+            };
+
+            // --- State ---
+            let animationFrameId;
+            let mediaRecorder;
+            let recordedChunks = [];
+            let textElements = [];
+            let subtitleElements = [];
+            let selectedElementIds = [];
+            let lastSelectedId = null;
+            let globalState = {
+                bgColor: '#1a1a1a',
+                totalDuration: 5000,
+                pixelsPerSecond: 100,
+            };
+            let previewState = {
+                isPlaying: true,
+                time: 0,
+                lastTimestamp: 0,
+            };
+            let presets = [];
+
+            // --- Populate Dynamic Selects ---
+            const fonts = ["Poppins","Inter","Lobster","Roboto Mono","Pacifico","Playfair Display","Bangers","Oswald","Merriweather"];
+            fonts.forEach(font => {
+                const option = document.createElement('option');
+                option.value = font;
+                option.textContent = font;
+                option.className = `font-${font.toLowerCase().replace(' ', '-')}`;
+                elementInputs.fontFamily.appendChild(option);
+            });
+
+            const inAnimations = { none: "None", fadeAndScale: "Fade & Scale In", slideIn: "Slide In From Left", typewriter: "Typewriter", pulse: "Pulse Once", riseUp: "Rise Up", dropIn: "Drop In (Bounce)", rotateIn: "Rotate In" };
+            const outAnimations = { none: "None", fadeOut: "Fade Out", slideOut: "Slide Out To Right", scaleOut: "Scale Out" };
+            const easingFunctions = { linear: "Linear", easeInCubic: "Ease In", easeOutCubic: "Ease Out", easeInOutCubic: "Ease In-Out", easeOutBounce: "Bounce" };
+
+            const populateSelect = (selectEl, options) => {
+                for(const [key, value] of Object.entries(options)) {
+                    selectEl.innerHTML += `<option value="${key}">${value}</option>`;
+                }
+            };
+
+            populateSelect(elementInputs.animationStyle, inAnimations);
+            populateSelect(elementInputs.outAnimationStyle, outAnimations);
+            populateSelect(elementInputs.animationEasing, easingFunctions);
+            populateSelect(elementInputs.outAnimationEasing, easingFunctions);
+
+
+            // --- State Management & UI Sync ---
+            function getFirstSelectedElement() { 
+                if (selectedElementIds.length === 0) return null;
+                return textElements.find(el => el.id === selectedElementIds[0]);
+            }
+
+            function updateControlsUI() {
+                const selectionCount = selectedElementIds.length;
+                globalControls.deleteLayerBtn.disabled = selectionCount === 0;
+                globalControls.duplicateLayerBtn.disabled = selectionCount === 0;
+
+                if (selectionCount === 0) {
+                    elementControls.classList.add('hidden');
+                    inspectorPlaceholder.classList.remove('hidden');
+                    inspectorPlaceholder.textContent = 'Select a clip to edit its properties.';
+                } else {
+                    elementControls.classList.remove('hidden');
+                    inspectorPlaceholder.classList.add('hidden');
+                    elementInputs.presetSelect.disabled = false;
+                    elementInputs.deletePresetBtn.disabled = elementInputs.presetSelect.value === "";
+                    elementInputs.savePresetBtn.disabled = selectionCount !== 1;
+
+                    if (selectionCount === 1) {
+                        inspectorTabs.style.display = 'flex';
+                        tabContent.style.display = 'block';
+                        const el = getFirstSelectedElement();
+                        // Populate fields
+                        elementInputs.text.value = el.text;
+                        elementInputs.fontFamily.value = el.fontFamily;
+                        elementInputs.fontSize.value = el.fontSize;
+                        elementInputs.textColor.value = el.textColor;
+                        elementInputs.positionX.value = Math.round(el.relativeX * canvas.width);
+                        elementInputs.positionY.value = Math.round(el.relativeY * canvas.height);
+                        elementInputs.rotation.value = el.rotation;
+                        elementInputs.rotationInput.value = el.rotation;
+                        elementInputs.borderWidth.value = el.borderWidth;
+                        elementInputs.borderColor.value = el.borderColor;
+                        elementInputs.startTime.value = (el.startTime / 1000).toFixed(2);
+                        elementInputs.animationStyle.value = el.animationStyle;
+                        elementInputs.animationEasing.value = el.animationEasing;
+                        elementInputs.animationDuration.value = (el.animationDuration / 1000).toFixed(2);
+                        elementInputs.stayDuration.value = (el.stayDuration / 1000).toFixed(2);
+                        elementInputs.outAnimationStyle.value = el.outAnimationStyle;
+                        elementInputs.outAnimationEasing.value = el.outAnimationEasing;
+                        elementInputs.outAnimationDuration.value = (el.outAnimationDuration / 1000).toFixed(2);
+                        elementInputs.shadowX.value = el.shadowX;
+                        elementInputs.shadowY.value = el.shadowY;
+                        elementInputs.shadowBlur.value = el.shadowBlur;
+                        elementInputs.shadowColor.value = el.shadowColor;
+
+                    } else { // Multiple selected
+                        inspectorTabs.style.display = 'none';
+                        tabContent.style.display = 'none';
+                        inspectorPlaceholder.classList.remove('hidden');
+                        inspectorPlaceholder.textContent = `${selectionCount} clips selected. Apply a preset to all.`;
+                    }
+                }
+                renderLayersList(); 
+            }
+
+            function renderLayersList() {
+                globalControls.layersList.innerHTML = '';
+                 textElements.forEach((el) => {
+                    const isSelected = selectedElementIds.includes(el.id);
+                    const itemWrapper = document.createElement('div');
+                    itemWrapper.className = `border rounded-md transition-all duration-200 ${isSelected ? 'bg-sky-800/30 border-sky-500' : 'border-gray-600'}`;
+                    
+                    const header = document.createElement('div');
+                    header.className = `p-2 flex items-center gap-3 text-sm cursor-pointer`;
+                    header.innerHTML = `
+                        <div class="w-3 h-3 rounded-sm flex-shrink-0" style="background-color:${el.textColor}"></div>
+                        <span class="flex-grow truncate">${el.text || 'Untitled'}</span>
+                    `;
+                    header.addEventListener('click', (e) => handleSelection(el.id, e.metaKey || e.ctrlKey, e.shiftKey));
+                    
+                    itemWrapper.appendChild(header);
+                    globalControls.layersList.appendChild(itemWrapper);
+                });
+            }
+
+            function addElement() {
+                const newElement = {
+                    id: Date.now(),
+                    text: `Clip ${textElements.length + 1}`,
+                    fontFamily: 'Poppins', fontSize: 100, textColor: '#FFFFFF',
+                    relativeX: 0.5, relativeY: 0.5, rotation: 0,
+                    borderWidth: 0, borderColor: '#000000',
+                    startTime: previewState.time,
+                    animationStyle: 'fadeAndScale', animationEasing: 'easeOutCubic', animationDuration: 500,
+                    stayDuration: 2000,
+                    outAnimationStyle: 'fadeOut', outAnimationEasing: 'easeInCubic', outAnimationDuration: 500,
+                    shadowX: 0, shadowY: 0, shadowBlur: 0, shadowColor: '#000000',
+                };
+                textElements.push(newElement);
+                handleSelection(newElement.id, false, false);
+                renderTimeline();
+            }
+
+            function deleteElement() {
+                if (selectedElementIds.length === 0) return;
+                showConfirmModal('Delete Clips?', `Are you sure you want to delete ${selectedElementIds.length} clip(s)? This cannot be undone.`, (confirmed) => {
+                    if(confirmed) {
+                        textElements = textElements.filter(el => !selectedElementIds.includes(el.id));
+                        selectedElementIds = [];
+                        lastSelectedId = null;
+                        updateControlsUI();
+                        renderTimeline();
+                    }
+                });
+            }
+            
+            function duplicateElements() {
+                const newElements = [];
+                const idsToSelect = [];
+                textElements.forEach(el => {
+                    if (selectedElementIds.includes(el.id)) {
+                        const newEl = JSON.parse(JSON.stringify(el)); // Deep copy
+                        newEl.id = Date.now() + Math.random();
+                        newEl.text = `${el.text} (copy)`;
+                        newEl.startTime += 200; // Offset a bit
+                        newElements.push(newEl);
+                        idsToSelect.push(newEl.id);
+                    }
+                });
+                textElements.push(...newElements);
+                selectedElementIds = idsToSelect;
+                lastSelectedId = idsToSelect[idsToSelect.length-1];
+                updateControlsUI();
+                renderTimeline();
+            }
+
+            function handleSelection(clickedId, isCtrl, isShift) {
+                const clickedIndex = textElements.findIndex(el => el.id === clickedId);
+
+                if (isShift && lastSelectedId) {
+                    const lastIndex = textElements.findIndex(el => el.id === lastSelectedId);
+                    const start = Math.min(lastIndex, clickedIndex);
+                    const end = Math.max(lastIndex, clickedIndex);
+                    const rangeIds = textElements.slice(start, end + 1).map(el => el.id);
+                    
+                    if(isCtrl) {
+                         selectedElementIds = [...new Set([...selectedElementIds, ...rangeIds])];
+                    } else {
+                        selectedElementIds = rangeIds;
+                    }
+                } else if (isCtrl) {
+                    const indexInSelection = selectedElementIds.indexOf(clickedId);
+                    if (indexInSelection > -1) {
+                        selectedElementIds.splice(indexInSelection, 1);
+                    } else {
+                        selectedElementIds.push(clickedId);
+                    }
+                    lastSelectedId = clickedId;
+                } else {
+                    if (selectedElementIds.includes(clickedId) && selectedElementIds.length === 1) {
+                         // Don't deselect if clicking the same item again
+                    } else {
+                        selectedElementIds = [clickedId];
+                        lastSelectedId = clickedId;
+                    }
+                }
+                updateControlsUI();
+                renderTimeline();
+            }
+
+             // --- Timeline Rendering and Interaction ---
+            function renderRuler() {
+                timelineRuler.innerHTML = ''; // Clear previous ruler
+                const duration = globalState.totalDuration / 1000;
+                const totalWidth = duration * globalState.pixelsPerSecond;
+                timelineRuler.style.width = `${totalWidth}px`;
+
+                for(let i = 0; i <= duration; i++) {
+                    const mark = document.createElement('div');
+                    mark.className = 'absolute top-0 h-full flex items-end text-xs text-gray-500 pointer-events-none';
+                    mark.style.left = `${i * globalState.pixelsPerSecond}px`;
+                    mark.innerHTML = `<span class="transform -translate-x-1/2">${i}s</span>`;
+                    
+                    const tick = document.createElement('div');
+                    tick.className = 'absolute top-0 h-2 w-px bg-gray-500 pointer-events-none';
+                    tick.style.left = `${i * globalState.pixelsPerSecond}px`;
+
+                    timelineRuler.appendChild(mark);
+                    timelineRuler.appendChild(tick);
+                }
+                 // Add playhead back in
+                timelineRuler.appendChild(playhead);
+            }
+
+            function renderTimeline() {
+                const totalWidth = globalState.totalDuration / 1000 * globalState.pixelsPerSecond;
+                
+                // Render main text clips
+                mainTracks.innerHTML = '';
+                mainTracks.style.width = `${totalWidth}px`;
+                mainTracks.style.height = `${textElements.length * 48}px`;
+
+                textElements.forEach((el, index) => {
+                    const clip = document.createElement('div');
+                    clip.className = `timeline-clip h-10 rounded-md bg-gray-600 flex items-center px-2 text-sm truncate ${selectedElementIds.includes(el.id) ? 'bg-sky-700 ring-2 ring-sky-400 z-10' : ''}`;
+                    clip.style.left = `${el.startTime / 1000 * globalState.pixelsPerSecond}px`;
+                    const clipDuration = el.animationDuration + el.stayDuration + el.outAnimationDuration;
+                    clip.style.width = `${Math.max(20, clipDuration / 1000 * globalState.pixelsPerSecond)}px`;
+                    clip.style.top = `${index * 48}px`;
+                    clip.style.borderColor = el.textColor;
+                    clip.textContent = el.text;
+                    clip.dataset.id = el.id;
+
+                    clip.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        if (e.target.classList.contains('clip-handle')) return;
+                        handleSelection(el.id, e.metaKey || e.ctrlKey, e.shiftKey);
+                        const startX = e.clientX;
+                        const initialStartTime = el.startTime;
+                        const onMouseMove = (moveEvent) => {
+                            const deltaX = moveEvent.clientX - startX;
+                            const deltaTime = (deltaX / globalState.pixelsPerSecond) * 1000;
+                            el.startTime = Math.max(0, initialStartTime + deltaTime);
+                            updateControlsUI();
+                            renderTimeline();
+                        };
+                        const onMouseUp = () => window.removeEventListener('mousemove', onMouseMove);
+                        window.addEventListener('mousemove', onMouseMove);
+                        window.addEventListener('mouseup', onMouseUp, { once: true });
+                    });
+
+                    const leftHandle = document.createElement('div');
+                    leftHandle.className = 'clip-handle left';
+                    clip.appendChild(leftHandle);
+                    leftHandle.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        const startX = e.clientX;
+                        const initialStartTime = el.startTime;
+                        const initialDuration = el.stayDuration;
+                        const onMouseMove = (moveEvent) => {
+                           const deltaX = moveEvent.clientX - startX;
+                           const deltaTime = (deltaX / globalState.pixelsPerSecond) * 1000;
+                           const newStart = Math.max(0, initialStartTime + deltaTime);
+                           const newDuration = Math.max(100, initialDuration - (newStart - initialStartTime));
+                           el.startTime = newStart;
+                           el.stayDuration = newDuration;
+                           updateControlsUI();
+                           renderTimeline();
+                        };
+                        window.addEventListener('mousemove', onMouseMove);
+                        window.addEventListener('mouseup', () => window.removeEventListener('mousemove', onMouseMove), { once: true });
+                    });
+
+                    const rightHandle = document.createElement('div');
+                    rightHandle.className = 'clip-handle right';
+                    clip.appendChild(rightHandle);
+                    rightHandle.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        const startX = e.clientX;
+                        const initialDuration = el.stayDuration;
+                        const onMouseMove = (moveEvent) => {
+                           const deltaX = moveEvent.clientX - startX;
+                           const deltaTime = (deltaX / globalState.pixelsPerSecond) * 1000;
+                           el.stayDuration = Math.max(100, initialDuration + deltaTime);
+                           updateControlsUI();
+                           renderTimeline();
+                        };
+                        window.addEventListener('mousemove', onMouseMove);
+                        window.addEventListener('mouseup', () => window.removeEventListener('mousemove', onMouseMove), { once: true });
+                    });
+                    
+                    mainTracks.appendChild(clip);
+                });
+
+                // Render subtitle clips
+                subtitleTrack.innerHTML = '';
+                subtitleTrack.style.width = `${totalWidth}px`;
+                subtitleTrack.style.height = `${subtitleElements.length * 48}px`;
+                subtitleTrack.style.display = subtitleElements.length > 0 ? 'block' : 'none';
+
+                subtitleElements.forEach((sub, index) => {
+                    const clip = document.createElement('div');
+                    clip.className = 'timeline-clip h-10 rounded-md bg-emerald-800 flex items-center px-2 text-sm truncate';
+                    clip.style.borderColor = '#4ade80';
+                    clip.style.left = `${sub.startTime / 1000 * globalState.pixelsPerSecond}px`;
+                    const clipDuration = sub.endTime - sub.startTime;
+                    clip.style.width = `${Math.max(20, clipDuration / 1000 * globalState.pixelsPerSecond)}px`;
+                    clip.style.top = `${index * 48}px`;
+                    clip.textContent = sub.text;
+                    
+                    clip.addEventListener('mousedown', (e) => { /* Subtitle drag logic here */ });
+                    // Add handles for subtitles
+                    subtitleTrack.appendChild(clip);
+                });
+            }
+
+            const easings = {
+                linear: t => t,
+                easeInCubic: t => t * t * t,
+                easeOutCubic: t => 1 - Math.pow(1 - t, 3),
+                easeInOutCubic: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+                easeOutBounce: t => {
+                    const n1 = 7.5625; const d1 = 2.75;
+                    if (t < 1 / d1) { return n1 * t * t; } 
+                    else if (t < 2 / d1) { return n1 * (t -= 1.5 / d1) * t + 0.75; }
+                    else if (t < 2.5 / d1) { return n1 * (t -= 2.25 / d1) * t + 0.9375; }
+                    else { return n1 * (t -= 2.625 / d1) * t + 0.984375; }
+                },
+            };
+
+            const drawBase = () => { ctx.fillStyle = globalState.bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height); };
+            const applyRotation = (el, x, y) => { ctx.translate(x, y); ctx.rotate(el.rotation * Math.PI / 180); }
+            const drawTextWithStyles = (textToDraw, el) => {
+                ctx.font = `bold ${el.fontSize}px '${el.fontFamily}', sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.shadowOffsetX = el.shadowX; ctx.shadowOffsetY = el.shadowY; ctx.shadowBlur = el.shadowBlur; ctx.shadowColor = el.shadowColor;
+                ctx.fillStyle = el.textColor; ctx.fillText(textToDraw, 0, 0);
+                if (el.borderWidth > 0) { ctx.shadowColor = 'rgba(0,0,0,0)'; ctx.lineWidth = el.borderWidth; ctx.strokeStyle = el.borderColor; ctx.strokeText(textToDraw, 0, 0); }
+            };
+
+            const animationStyles = {
+                none: (progress, el, easedProgress) => { ctx.save(); applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); },
+                fadeAndScale: (progress, el, easedProgress) => { ctx.save(); const scale = 0.8 + easedProgress * 0.2; ctx.globalAlpha = easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); },
+                slideIn: (progress, el, easedProgress) => { ctx.save(); const startX = -el.fontSize - (el.relativeX * canvas.width); const x = startX + (easedProgress * (el.relativeX * canvas.width - startX)); ctx.globalAlpha = easedProgress; applyRotation(el, x, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); },
+                typewriter: (progress, el, easedProgress) => { ctx.save(); const len = Math.floor(el.text.length * easedProgress); const displayedText = el.text.substring(0, len); applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); drawTextWithStyles(displayedText, el); ctx.restore(); },
+                pulse: (progress, el, easedProgress) => { ctx.save(); const scale = 1 + Math.sin(easedProgress * Math.PI) * 0.1; ctx.globalAlpha = Math.sin(easedProgress * Math.PI); applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); },
+                riseUp: (progress, el, easedProgress) => { ctx.save(); const startY = canvas.height + el.fontSize; const y = startY - (easedProgress * (startY - (el.relativeY * canvas.height))); ctx.globalAlpha = easedProgress; applyRotation(el, el.relativeX * canvas.width, y); drawTextWithStyles(el.text, el); ctx.restore(); },
+                dropIn: (progress, el, easedProgress) => { ctx.save(); const startY = -el.fontSize; const y = startY + (easedProgress * ((el.relativeY * canvas.height) - startY)); ctx.globalAlpha = progress < 0.1 ? progress * 10 : 1; applyRotation(el, el.relativeX * canvas.width, y); drawTextWithStyles(el.text, el); ctx.restore(); },
+                rotateIn: (progress, el, easedProgress) => { ctx.save(); const angle = (1 - easedProgress) * -Math.PI / 2; const scale = 0.5 + easedProgress * 0.5; ctx.globalAlpha = easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.rotate(angle); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); },
+                fadeOut: (progress, el, easedProgress) => { ctx.save(); ctx.globalAlpha = 1 - easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); },
+                slideOut: (progress, el, easedProgress) => { ctx.save(); const x = (el.relativeX * canvas.width) + (easedProgress * (canvas.width - el.relativeX * canvas.width + el.fontSize*2)); ctx.globalAlpha = 1 - easedProgress; applyRotation(el, x, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); },
+                scaleOut: (progress, el, easedProgress) => { ctx.save(); const scale = 1 - easedProgress; ctx.globalAlpha = 1 - easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); }
+            };
+
+            const draw = (time) => {
+                drawBase();
+                textElements.forEach(el => {
+                    if (time < el.startTime) return; 
+                    const localTime = time - el.startTime;
+                    const totalLifetime = el.animationDuration + el.stayDuration + el.outAnimationDuration;
+                    if (localTime > totalLifetime && totalLifetime > 0) return;
+
+                    if (localTime <= el.animationDuration) {
+                        const progress = el.animationDuration > 0 ? localTime / el.animationDuration : 1;
+                        const easedProgress = (easings[el.animationEasing] || easings.linear)(progress);
+                        animationStyles[el.animationStyle](progress, el, easedProgress);
+                    } else if (localTime <= el.animationDuration + el.stayDuration) {
+                        animationStyles['none'](1, el, 1);
+                    } else {
+                        const outTime = localTime - (el.animationDuration + el.stayDuration);
+                        const progress = el.outAnimationDuration > 0 ? outTime / el.outAnimationDuration : 1;
+                        const easedProgress = (easings[el.outAnimationEasing] || easings.linear)(progress);
+                        animationStyles[el.outAnimationStyle](progress, el, easedProgress);
+                    }
+                });
+
+                // Draw subtitles
+                subtitleElements.forEach(sub => {
+                    if (time >= sub.startTime && time <= sub.endTime) {
+                        const subFontSize = Math.max(20, Math.round(canvas.height / 28));
+                        ctx.font = `600 ${subFontSize}px 'Inter', sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        const text = sub.text;
+                        const x = canvas.width / 2;
+                        const y = canvas.height - 20;
+                        const textMetrics = ctx.measureText(text);
+                        
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                        ctx.shadowColor = 'transparent';
+                        ctx.fillRect(x - textMetrics.width / 2 - 10, y - subFontSize, textMetrics.width + 20, subFontSize + 10);
+
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.shadowColor = 'black';
+                        ctx.shadowBlur = 5;
+                        ctx.fillText(text, x, y - 5);
+                        ctx.shadowBlur = 0;
+                    }
+                });
+            };
+            
+            const updateTimelineUI = () => {
+                globalControls.currentTimeDisplay.textContent = (previewState.time / 1000).toFixed(1);
+                globalControls.totalTimeDisplay.textContent = (globalState.totalDuration / 1000).toFixed(1);
+                playhead.style.left = `${previewState.time / 1000 * globalState.pixelsPerSecond}px`;
+            };
+
+            const previewAnimationLoop = (timestamp) => {
+                if (!previewState.lastTimestamp) previewState.lastTimestamp = timestamp;
+                if (previewState.isPlaying) {
+                    const deltaTime = timestamp - previewState.lastTimestamp;
+                    previewState.time += deltaTime;
+                    if (previewState.time > globalState.totalDuration) previewState.time = 0;
+                }
+                previewState.lastTimestamp = timestamp;
+                draw(previewState.time);
+                updateTimelineUI();
+                animationFrameId = requestAnimationFrame(previewAnimationLoop);
+            };
+            
+            const startPreviewAnimation = () => { if (animationFrameId) cancelAnimationFrame(animationFrameId); previewState.lastTimestamp = 0; animationFrameId = requestAnimationFrame(previewAnimationLoop); };
+
+            const setupMediaRecorder = () => {
+                const stream = canvas.captureStream(30);
+                const options = { mimeType: 'video/webm; codecs=vp9' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) { options.mimeType = 'video/webm; codecs=vp8'; if (!MediaRecorder.isTypeSupported(options.mimeType)) options.mimeType = 'video/webm'; }
+                mediaRecorder = new MediaRecorder(stream, options);
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+                    globalControls.downloadLink.href = URL.createObjectURL(blob);
+                    const filename = globalControls.outputFilename.value.trim() || 'pro_animation';
+                    globalControls.downloadLink.download = `${filename}.mp4`;
+                    globalControls.downloadSection.classList.remove('hidden');
+                    globalControls.startBtn.disabled = false;
+                    globalControls.recordingIndicator.classList.add('hidden');
+                    previewState.isPlaying = true;
+                    globalControls.playIcon.classList.add('hidden');
+                    globalControls.pauseIcon.classList.remove('hidden');
+                    startPreviewAnimation();
+                };
+            };
+            const setCanvasResolution = (width, height) => {
+                canvas.width = width; canvas.height = height;
+                updateControlsUI(); 
+            };
+            
+            // --- Subtitle Logic ---
+            function srtTimeToMs(timeString) {
+                const parts = timeString.split(/[:,]/);
+                return parseInt(parts[0],10)*3600000 + parseInt(parts[1],10)*60000 + parseInt(parts[2],10)*1000 + parseInt(parts[3],10);
+            }
+
+            function parseSrt(data) {
+                const srtRegex = /(\d+)\r?\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\r?\n([\s\S]*?)(?=\r?\n\r?\n|$)/g;
+                let match;
+                const newSubtitles = [];
+                while ((match = srtRegex.exec(data)) !== null) {
+                    newSubtitles.push({
+                        id: Date.now() + Math.random(),
+                        startTime: srtTimeToMs(match[2]),
+                        endTime: srtTimeToMs(match[3]),
+                        text: match[4].replace(/(\r\n|\n|\r)/gm, " ").trim(),
+                    });
+                }
+                subtitleElements.push(...newSubtitles);
+                renderSubtitlesList();
+                renderTimeline();
+            }
+
+            function addSubtitleElement() {
+                const newSub = {
+                    id: Date.now(),
+                    text: 'New Subtitle',
+                    startTime: previewState.time,
+                    endTime: previewState.time + 3000,
+                };
+                subtitleElements.push(newSub);
+                renderSubtitlesList();
+                renderTimeline();
+            }
+
+            function renderSubtitlesList() {
+                globalControls.subtitlesList.innerHTML = '';
+                subtitleElements.forEach(sub => {
+                    const item = document.createElement('div');
+                    item.className = 'p-2 rounded-md bg-gray-800/50 text-sm space-y-2';
+                    item.innerHTML = `
+                        <textarea class="w-full rounded p-1 text-xs resize-none" rows="2">${sub.text}</textarea>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" step="0.1" value="${(sub.startTime/1000).toFixed(2)}" class="w-full p-1 rounded text-xs" title="Start Time (s)">
+                            <input type="number" step="0.1" value="${(sub.endTime/1000).toFixed(2)}" class="w-full p-1 rounded text-xs" title="End Time (s)">
+                        </div>
+                    `;
+                    const textarea = item.querySelector('textarea');
+                    const inputs = item.querySelectorAll('input');
+                    textarea.addEventListener('input', (e) => { sub.text = e.target.value; renderTimeline(); });
+                    inputs[0].addEventListener('input', (e) => { sub.startTime = Math.max(0, parseFloat(e.target.value) * 1000); renderTimeline(); });
+                    inputs[1].addEventListener('input', (e) => { sub.endTime = Math.max(sub.startTime, parseFloat(e.target.value) * 1000); renderTimeline(); });
+                    globalControls.subtitlesList.appendChild(item);
+                });
+            }
+
+            // --- Event Listeners ---
+            globalControls.addLayerBtn.addEventListener('click', addElement);
+            globalControls.deleteLayerBtn.addEventListener('click', deleteElement);
+            globalControls.duplicateLayerBtn.addEventListener('click', duplicateElements);
+            globalControls.bgColor.addEventListener('input', (e) => globalState.bgColor = e.target.value);
+            globalControls.addSubtitleBtn.addEventListener('click', addSubtitleElement);
+            globalControls.importSrtBtn.addEventListener('click', () => {
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.srt';
+                fileInput.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => parseSrt(e.target.result);
+                        reader.readAsText(file);
+                    }
+                };
+                fileInput.click();
+            });
+            
+            globalControls.exportResolution.addEventListener('change', (e) => { const [width, height] = e.target.value.split('x').map(Number); setCanvasResolution(width, height); });
+
+            globalControls.totalDurationInput.addEventListener('input', (e) => {
+                globalState.totalDuration = Math.max(1000, parseInt(e.target.value, 10) * 1000);
+                updateTimelineUI();
+                renderTimeline();
+                renderRuler();
+            });
+
+            globalControls.previewPlayPauseBtn.addEventListener('click', () => {
+                previewState.isPlaying = !previewState.isPlaying;
+                if (previewState.isPlaying) { previewState.lastTimestamp = 0; globalControls.playIcon.classList.add('hidden'); globalControls.pauseIcon.classList.remove('hidden'); }
+                else { globalControls.playIcon.classList.remove('hidden'); globalControls.pauseIcon.classList.add('hidden'); }
+            });
+
+             // Timeline Scrubbing
+            let isScrubbing = false;
+
+            function handleScrub(e) {
+                const rect = timelineRuler.getBoundingClientRect();
+                const scrollLeft = timelineRuler.parentElement.scrollLeft;
+                const clickX = e.clientX - rect.left + scrollLeft;
+                const newTime = (clickX / globalState.pixelsPerSecond) * 1000;
+                previewState.time = Math.max(0, Math.min(newTime, globalState.totalDuration));
+                if (!previewState.isPlaying) { draw(previewState.time); updateTimelineUI(); }
+            }
+
+            timelinePanel.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.timeline-clip')) return;
+                isScrubbing = true;
+                previewState.isPlaying = false;
+                globalControls.playIcon.classList.remove('hidden');
+                globalControls.pauseIcon.classList.add('hidden');
+                handleScrub(e);
+                const onMouseMove = (moveEvent) => { if (isScrubbing) { handleScrub(moveEvent); } };
+                const onMouseUp = () => { isScrubbing = false; window.removeEventListener('mousemove', onMouseMove); };
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp, {once: true});
+            });
+
+
+            // Left Panel Tabs
+            document.querySelectorAll('[data-left-tab]').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('[data-left-tab]').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelectorAll('.left-tab-panel').forEach(panel => panel.classList.add('hidden'));
+                    document.getElementById(`left-tab-${tab.dataset.leftTab}`).classList.remove('hidden');
+                });
+            });
+
+            // Inspector Tabs
+            document.querySelectorAll('[data-tab]').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('[data-tab]').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+                    document.getElementById(`tab-${tab.dataset.tab}`).classList.remove('hidden');
+                });
+            });
+
+            Object.keys(elementInputs).forEach(key => {
+                if (!elementInputs[key]) return;
+                elementInputs[key].addEventListener('input', (e) => {
+                    const el = getFirstSelectedElement();
+                    if (!el) return;
+                    let value = e.target.value;
+                     if (['fontSize', 'borderWidth', 'shadowX', 'shadowY', 'shadowBlur', 'positionX', 'positionY', 'rotation', 'rotationInput'].includes(key)) { value = parseInt(value, 10) || 0; }
+                     else if (['startTime', 'animationDuration', 'stayDuration', 'outAnimationDuration'].includes(key)) { value = parseFloat(value) * 1000; }
+                    
+                    if (key === 'rotationInput') { el.rotation = value; elementInputs.rotation.value = value; }
+                    else if (key === 'positionX') { el.relativeX = value / canvas.width; }
+                    else if (key === 'positionY') { el.relativeY = value / canvas.height; }
+                    else if (key === 'rotation') { el.rotation = value; elementInputs.rotationInput.value = value; }
+                    else { el[key] = value; }
+                    
+                    if (key === 'text' || key === 'textColor') renderLayersList();
+                    renderTimeline();
+                });
+            });
+
+            // --- Canvas Direct Manipulation ---
+            let draggedElement = null;
+            let dragOffset = { x: 0, y: 0 };
+            
+            function getElementAtPoint(x, y, time) {
+                // Iterate backwards to select top-most element
+                for (let i = textElements.length - 1; i >= 0; i--) {
+                    const el = textElements[i];
+                    const totalLifetime = el.animationDuration + el.stayDuration + el.outAnimationDuration;
+                    if (time < el.startTime || time > el.startTime + totalLifetime) continue;
+                    
+                    ctx.font = `bold ${el.fontSize}px '${el.fontFamily}', sans-serif`;
+                    const metrics = ctx.measureText(el.text);
+                    const elWidth = metrics.width;
+                    const elHeight = el.fontSize;
+                    const elX = el.relativeX * canvas.width;
+                    const elY = el.relativeY * canvas.height;
+
+                    if (x > elX - elWidth / 2 && x < elX + elWidth / 2 && y > elY - elHeight / 2 && y < elY + elHeight / 2) {
+                        return el;
+                    }
+                }
+                return null;
+            }
+
+            canvas.addEventListener('mousedown', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const targetElement = getElementAtPoint(x, y, previewState.time);
+                if (targetElement) {
+                    draggedElement = targetElement;
+                    handleSelection(targetElement.id, false, false);
+                    const elX = targetElement.relativeX * canvas.width;
+                    const elY = targetElement.relativeY * canvas.height;
+                    dragOffset.x = x - elX;
+                    dragOffset.y = y - elY;
+                    canvas.classList.add('grabbing');
+                    previewState.isPlaying = false;
+                    globalControls.playIcon.classList.remove('hidden');
+                    globalControls.pauseIcon.classList.add('hidden');
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (draggedElement) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    draggedElement.relativeX = (x - dragOffset.x) / canvas.width;
+                    draggedElement.relativeY = (y - dragOffset.y) / canvas.height;
+                    updateControlsUI();
+                }
+            });
+            
+            window.addEventListener('mouseup', () => {
+                draggedElement = null;
+                canvas.classList.remove('grabbing');
+            });
+
+            // --- Modal Logic ---
+            function showModal(config) {
+                modalElements.title.textContent = config.title;
+                modalElements.text.style.display = config.text ? 'block' : 'none';
+                modalElements.text.textContent = config.text || '';
+                modalElements.input.style.display = config.showInput ? 'block' : 'none';
+                if (config.showInput) {
+                    modalElements.input.value = config.inputValue || '';
+                    modalElements.input.placeholder = config.inputPlaceholder || '';
+                }
+                modalElements.backdrop.classList.remove('hidden');
+            
+                return new Promise((resolve) => {
+                    const confirmHandler = () => { cleanup(); resolve(config.showInput ? modalElements.input.value : true); };
+                    const cancelHandler = () => { cleanup(); resolve(null); };
+                    const cleanup = () => {
+                        modalElements.backdrop.classList.add('hidden');
+                        modalElements.confirmBtn.removeEventListener('click', confirmHandler);
+                        modalElements.cancelBtn.removeEventListener('click', cancelHandler);
+                    };
+                    modalElements.confirmBtn.addEventListener('click', confirmHandler, { once: true });
+                    modalElements.cancelBtn.addEventListener('click', cancelHandler, { once: true });
+                });
+            }
+
+            async function showPromptModal(title, placeholder, defaultValue) {
+                return showModal({ title: title, showInput: true, inputPlaceholder: placeholder, inputValue: defaultValue });
+            }
+
+            async function showConfirmModal(title, text, callback) {
+                const result = await showModal({ title: title, text: text, showInput: false });
+                callback(!!result);
+            }
+
+            // --- Preset Logic ---
+            const PRESET_STORAGE_KEY = 'proTextAnimPresets';
+            function loadPresets() {
+                presets = JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY)) || [];
+                elementInputs.presetSelect.innerHTML = '<option value="">Apply a Preset...</option>';
+                presets.forEach(p => {
+                    elementInputs.presetSelect.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+                });
+            }
+            
+            elementInputs.savePresetBtn.addEventListener('click', async () => {
+                const el = getFirstSelectedElement();
+                if (!el) return;
+                const name = await showPromptModal("Save Preset", "Enter a name...", el.text);
+                if (!name || !name.trim()) return;
+                const presetSettings = {
+                    fontFamily: el.fontFamily, fontSize: el.fontSize, textColor: el.textColor,
+                    relativeX: el.relativeX, relativeY: el.relativeY, rotation: el.rotation,
+                    borderWidth: el.borderWidth, borderColor: el.borderColor,
+                    animationStyle: el.animationStyle, animationEasing: el.animationEasing,
+                    outAnimationStyle: el.outAnimationStyle, outAnimationEasing: el.outAnimationEasing,
+                    shadowX: el.shadowX, shadowY: el.shadowY, shadowBlur: el.shadowBlur, shadowColor: el.shadowColor,
+                };
+                const existingIndex = presets.findIndex(p => p.name === name);
+                if (existingIndex > -1) { presets[existingIndex].settings = presetSettings; } else { presets.push({ name, settings: presetSettings }); }
+                localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+                loadPresets();
+            });
+
+            elementInputs.presetSelect.addEventListener('change', (e) => {
+                const presetName = e.target.value;
+                elementInputs.deletePresetBtn.disabled = presetName === "";
+                if (!presetName || selectedElementIds.length === 0) return;
+                const preset = presets.find(p => p.name === presetName);
+                if (preset) {
+                    selectedElementIds.forEach(id => {
+                        const elToUpdate = textElements.find(el => el.id === id);
+                        if(elToUpdate) { Object.assign(elToUpdate, preset.settings); }
+                    });
+                    updateControlsUI();
+                    renderTimeline();
+                }
+                e.target.value = "";
+                elementInputs.deletePresetBtn.disabled = true;
+            });
+
+            elementInputs.deletePresetBtn.addEventListener('click', () => {
+                const selectedOption = Array.from(elementInputs.presetSelect.options).find(opt => opt.selected);
+                const presetName = selectedOption ? selectedOption.value : null;
+                if(!presetName) return;
+                showConfirmModal('Delete Preset?', `Are you sure you want to delete the preset "${presetName}"?`, (confirmed) => {
+                    if (confirmed) {
+                         presets = presets.filter(p => p.name !== presetName);
+                         localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
+                         loadPresets();
+                         elementInputs.deletePresetBtn.disabled = true;
+                    }
+                });
+            });
+
+             globalControls.startBtn.addEventListener('click', () => {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                previewState.isPlaying = false;
+                globalControls.playIcon.classList.remove('hidden');
+                globalControls.pauseIcon.classList.add('hidden');
+                recordedChunks = [];
+                globalControls.downloadSection.classList.add('hidden');
+                setupMediaRecorder();
+                mediaRecorder.start();
+                globalControls.startBtn.disabled = true;
+                globalControls.recordingIndicator.classList.remove('hidden');
+                const recordStartTime = performance.now();
+                function recordLoop(timestamp) {
+                    const elapsedTime = timestamp - recordStartTime;
+                    if (elapsedTime >= globalState.totalDuration) {
+                        draw(elapsedTime);
+                        if (mediaRecorder.state === 'recording') mediaRecorder.stop();
+                        return;
+                    }
+                    draw(elapsedTime);
+                    requestAnimationFrame(recordLoop);
+                }
+                requestAnimationFrame(recordLoop);
+            });
+            
+             globalControls.timelineZoom.addEventListener('input', (e) => {
+                globalState.pixelsPerSecond = parseInt(e.target.value, 10);
+                renderTimeline();
+                renderRuler();
+                updateTimelineUI();
+            });
+
+            // --- Initial Kick-off ---
+            setCanvasResolution(1280, 720);
+            loadPresets();
+            addElement();
+            renderRuler();
+            startPreviewAnimation();
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Text Animation Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lobster&family=Roboto+Mono&family=Pacifico&family=Poppins:wght@700&family=Playfair+Display:wght@700&family=Bangers&family=Oswald:wght@700&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-darkest: #111827;
+            --bg-dark: #1F2937;
+            --bg-panel: #374151;
+            --border-color: #4B5563;
+            --text-primary: #F9FAFB;
+            --text-secondary: #D1D5DB;
+            --text-tertiary: #9CA3AF;
+            --accent-primary: #38BDF8;
+            --accent-primary-hover: #7DD3FC;
+            --accent-secondary: #4ADE80;
+            --accent-danger: #F43F5E;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-darkest);
+            color: var(--text-primary);
+        }
+        .panel {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .header-gradient {
+            background: -webkit-linear-gradient(45deg, var(--accent-primary), #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--bg-panel); border-radius: 4px; border: 2px solid var(--bg-dark); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-color); }
+
+        /* Inputs & Buttons */
+        input[type="text"], input[type="number"], select, textarea {
+            background-color: var(--bg-darkest);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            border-radius: 0.375rem; /* rounded-md */
+            padding: 0.5rem 0.75rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3);
+        }
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            padding: 0;
+            width: 100%;
+            height: 2.5rem; /* h-10 */
+            border-radius: 0.375rem;
+            cursor: pointer;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border-color); border-radius: 0.375rem; }
+
+        /* Tabs */
+        .tab-button {
+            color: var(--text-tertiary);
+            transition: all 0.2s;
+            border-radius: 0.25rem;
+        }
+        .tab-button:hover { color: var(--text-primary); background-color: rgba(255,255,255,0.05); }
+        .tab-button.active {
+            color: var(--text-primary);
+            background-color: var(--bg-panel);
+            font-weight: 600;
+        }
+        
+        /* Timeline */
+        #timeline-ruler {
+            background-image: linear-gradient(to right, #4B5563 1px, transparent 1px);
+            background-size: 50px 100%;
+        }
+        .timeline-clip {
+            cursor: grab;
+            border-left-width: 4px;
+            position: absolute;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+        .timeline-clip:active { cursor: grabbing; z-index: 20; }
+        .clip-handle {
+            position: absolute; top: 0; bottom: 0; width: 10px; cursor: ew-resize; z-index: 10;
+        }
+        .clip-handle::after {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); width: 4px; height: 16px;
+            background-color: rgba(249, 250, 251, 0.7); border-radius: 2px;
+        }
+        .clip-handle.left { left: -3px; }
+        .clip-handle.right { right: -3px; }
+
+        /* Font Previews */
+        select option { background-color: var(--bg-dark); color: var(--text-secondary); }
+        /* Font options will inherit from body */
+
+        /* Modal */
+        #modal-backdrop { background-color: rgba(0,0,0,0.7); z-index: 999; }
+        #modal-content {
+            background-color: var(--bg-dark);
+            transform: translateY(-20px) scale(0.95);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        #modal-backdrop:not(.hidden) #modal-content { opacity: 1; transform: translateY(0) scale(1); }
+    </style>
+</head>
+<body class="h-screen flex flex-col p-2 md:p-4 gap-4 text-sm">
+
+    <header class="text-center flex-shrink-0">
+        <h1 class="text-2xl md:text-3xl font-bold header-gradient tracking-tight">Pro Text Animation Editor</h1>
+    </header>
+
+    <div class="flex-grow flex flex-col md:flex-row gap-4 overflow-hidden">
+        
+        <!-- Left Column -->
+        <div class="w-full md:w-1/4 flex flex-col gap-4">
+              <!-- Combined Clips/Export Panel -->
+            <div class="panel rounded-lg p-3 md:p-4 flex flex-col h-full overflow-hidden">
+                  <!-- Tabs -->
+                  <nav class="flex-shrink-0 flex space-x-1 rounded-md p-1 bg-gray-900/50 mb-4">
+                      <button data-left-tab="clips" class="tab-button w-full py-1.5 px-3 font-semibold rounded active">Clips</button>
+                      <button data-left-tab="subtitles" class="tab-button w-full py-1.5 px-3 font-semibold rounded">Subtitles</button>
+                      <button data-left-tab="export" class="tab-button w-full py-1.5 px-3 font-semibold rounded">Export</button>
+                  </nav>
+
+                  <!-- Tab Content Area -->
+                  <div class="flex-grow overflow-hidden relative">
+                      <!-- Clips Panel Content -->
+                      <div id="left-tab-clips" class="left-tab-panel h-full flex flex-col">
+                          <div class="flex gap-2 mb-3 flex-shrink-0">
+                              <button id="add-layer-btn" title="Add New Clip" class="flex-1 flex items-center justify-center gap-2 bg-sky-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-sky-500 transition-all">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                              </button>
+                              <button id="duplicate-layer-btn" title="Duplicate Selected Clip(s)" class="flex-1 flex items-center justify-center gap-2 bg-gray-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                              </button>
+                               <button id="delete-layer-btn" title="Delete Selected Clip(s)" class="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-red-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                              </button>
+                          </div>
+                          <div id="layers-list" class="space-y-2 flex-grow overflow-y-auto pr-2"></div>
+                      </div>
+                      <!-- Subtitles Panel Content -->
+                       <div id="left-tab-subtitles" class="left-tab-panel hidden h-full flex flex-col">
+                            <div class="flex gap-2 mb-3 flex-shrink-0">
+                                <button id="add-subtitle-btn" title="Add New Subtitle" class="flex-1 flex items-center justify-center gap-2 bg-sky-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-sky-500 transition-all">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    <span>Add</span>
+                                </button>
+                                <button id="import-srt-btn" title="Import SRT file" class="flex-1 flex items-center justify-center gap-2 bg-gray-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-500 transition-all">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                    <span>Import</span>
+                                </button>
+                                <button id="delete-subtitle-btn" title="Delete Selected Subtitle" class="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-red-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                    <span>Delete</span>
+                                </button>
+                            </div>
+                            <div id="subtitles-list" class="space-y-2 flex-grow overflow-y-auto pr-2"></div>
+                        </div>
+                      <!-- Export Panel Content -->
+                      <div id="left-tab-export" class="left-tab-panel hidden h-full overflow-y-auto pr-2">
+                          <div class="space-y-4">
+                                <div>
+                                    <label for="output-filename" class="block text-sm font-medium text-gray-400 mb-1">Output Name</label>
+                                    <input type="text" id="output-filename" value="pro_animation">
+                                </div>
+                                <div>
+                                    <label for="export-resolution" class="block text-sm font-medium text-gray-400 mb-1">Resolution</label>
+                                    <select id="export-resolution">
+                                        <option value="640x360">360p (640x360)</option>
+                                        <option value="854x480">480p (854x480)</option>
+                                        <option value="1280x720" selected>720p (1280x720)</option>
+                                        <option value="1920x1080">1080p (1920x1080)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="export-format" class="block text-sm font-medium text-gray-400 mb-1">Format</label>
+                                    <select id="export-format">
+                                        <option value="video/mp4">MP4</option>
+                                        <option value="video/webm; codecs=vp9">WebM (VP9 - High Quality)</option>
+                                        <option value="video/webm; codecs=vp8">WebM (VP8 - Compatible)</option>
+                                        <option value="video/webm">WebM (Default)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="bg-color" class="block text-sm font-medium text-gray-400 mb-1">Export Background</label>
+                                    <input type="color" id="bg-color" value="#111827">
+                                </div>
+                                <div>
+                                    <label for="viewer-bg-color" class="block text-sm font-medium text-gray-400 mb-1">Viewer Background</label>
+                                    <input type="color" id="viewer-bg-color" value="#1F2937">
+                                </div>
+                                <div>
+                                    <label for="total-duration-input" class="block text-sm font-medium text-gray-400 mb-1">Timeline Duration (s)</label>
+                                    <input type="number" id="total-duration-input" value="5" min="1" max="300">
+                                </div>
+                                <div id="recording-controls" class="space-y-3 pt-3 border-t border-gray-700">
+                                     <button id="start-btn" class="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-bold py-2 px-4 rounded-md hover:bg-green-500 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <svg id="start-btn-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2zm0 15c-2.76 0-5-2.24-5-5s2.24-5 5-5s5 2.24 5 5s-2.24 5-5 5z"/><path fill="currentColor" d="M12 9.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5s-1.12-2.5-2.5-2.5z"/></svg>
+                                        <span id="start-btn-text">Record</span>
+                                    </button>
+                                </div>
+                                <div id="download-section" class="hidden text-center">
+                                    <a id="download-link" class="mt-2 inline-block w-full bg-sky-600 text-white font-bold py-2 px-4 rounded-md hover:bg-sky-500 transition-all">
+                                        Download Video
+                                    </a>
+                                </div>
+                          </div>
+                      </div>
+                  </div>
+            </div>
+        </div>
+
+
+        <!-- Center Column -->
+        <div class="w-full md:w-1/2 flex flex-col gap-4">
+            <!-- Viewer -->
+            <div id="viewer-panel" class="panel rounded-lg p-2 flex-grow flex items-center justify-center bg-black/20">
+                 <div class="w-full h-full relative">
+                    <canvas id="animation-canvas" class="w-full h-full object-contain"></canvas>
+                    <div id="recording-indicator" class="hidden absolute top-3 right-3 w-4 h-4 bg-red-500 rounded-full animate-pulse ring-2 ring-red-500/50"></div>
+                </div>
+            </div>
+            <!-- Timeline Controls -->
+             <div id="timeline-controls" class="panel rounded-lg p-3 flex-shrink-0 flex flex-col gap-3">
+                <div class="flex items-center justify-center gap-4">
+                    <button id="preview-play-pause-btn" class="flex items-center justify-center w-10 h-10 bg-gray-600 text-white font-bold rounded-full hover:bg-gray-500 transition-all focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                        <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="hidden"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    </button>
+                    <div class="text-gray-300 font-mono text-lg bg-gray-900/50 px-4 py-1 rounded-md">
+                        <span id="current-time-display">0.0</span> / <span id="total-time-display">5.0</span>s
+                    </div>
+                </div>
+                <div class="w-full flex items-center gap-3 px-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                     <input type="range" id="timeline-zoom" min="20" max="500" value="100" class="w-full">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column (Inspector) -->
+        <div class="w-full md:w-1/4 flex flex-col">
+            <div class="panel rounded-lg p-3 md:p-4 h-full overflow-y-auto flex flex-col">
+                <nav class="flex-shrink-0 flex space-x-1 rounded-md p-1 bg-gray-900/50 mb-4">
+                    <button data-right-tab="inspector" class="tab-button w-full py-1.5 px-3 font-semibold rounded active">Inspector</button>
+                    <button data-right-tab="animation" class="tab-button w-full py-1.5 px-3 font-semibold rounded">Animation</button>
+                    <button data-right-tab="presets" class="tab-button w-full py-1.5 px-3 font-semibold rounded">Presets</button>
+                </nav>
+
+                <div id="right-panels-container" class="flex-grow overflow-y-auto pr-2">
+                    <div id="inspector-panel-container" class="right-tab-panel"></div>
+                    <div id="animation-panel-container" class="right-tab-panel hidden"></div>
+                    <div id="presets-panel-container" class="right-tab-panel hidden"></div>
+                </div>
+
+                 <div id="inspector-placeholder" class="text-center text-gray-500 pt-16">
+                    <svg class="mx-auto h-12 w-12 text-gray-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l.79-.79"></path></svg>
+                     <p class="mt-4 font-semibold">Select an item</p>
+                     <p class="mt-1 text-xs text-gray-400">Select a clip or subtitle on the timeline to edit its properties here.</p>
+                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Timeline -->
+    <div class="panel rounded-lg p-2 flex-shrink-0 min-h-[12rem] max-h-[33vh] flex">
+        <div class="w-32 flex-shrink-0 flex flex-col text-xs font-semibold text-gray-400">
+             <div class="h-6 flex items-center px-2">TIMELINE</div>
+             <div class="flex-grow overflow-hidden relative">
+                 <div id="track-headers" class="absolute top-0 left-0 w-full">
+                    <!-- Dynamic track headers here -->
+                 </div>
+             </div>
+        </div>
+        <div class="flex-grow flex flex-col min-w-0">
+            <div class="w-full overflow-x-auto" id="timeline-scroll-container">
+                <div id="timeline-ruler" class="h-6 w-full relative flex-shrink-0">
+                     <div id="playhead" class="absolute top-0 h-full w-0.5 bg-sky-400 z-30 pointer-events-none">
+                         <div class="absolute -top-1 -translate-x-1/2 left-1/2 w-3 h-3 bg-sky-400 rounded-full"></div>
+                     </div>
+                </div>
+            </div>
+            <div id="timeline-tracks-container" class="flex-grow overflow-auto relative">
+                 <div id="main-tracks" class="relative"></div>
+                 <div id="subtitle-track" class="relative"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 flex items-center justify-center p-4">
+        <div id="modal-content" class="w-full max-w-sm rounded-lg p-6 shadow-xl opacity-0">
+            <h3 id="modal-title" class="text-lg font-bold mb-4">Modal Title</h3>
+            <div id="modal-body" class="space-y-4">
+                <p id="modal-text"></p>
+                <input type="text" id="modal-input">
+            </div>
+            <div id="modal-footer" class="flex justify-end gap-3 mt-6">
+                <button id="modal-cancel-btn" class="py-2 px-4 rounded-md bg-gray-600 hover:bg-gray-500 transition-colors">Cancel</button>
+                <button id="modal-confirm-btn" class="py-2 px-4 rounded-md bg-sky-600 hover:bg-sky-500 transition-colors text-white font-semibold">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Inspector Templates -->
+    <template id="clip-inspector-template">
+         <nav class="flex space-x-1 rounded-md p-1 bg-gray-900/50 mb-4">
+             <button data-tab="style" class="tab-button w-full py-1.5 px-3 font-semibold rounded active">Style</button>
+             <button data-tab="layout" class="tab-button w-full py-1.5 px-3 font-semibold rounded">Layout</button>
+             <button data-tab="effects" class="tab-button w-full py-1.5 px-3 font-semibold rounded">Effects</button>
+         </nav>
+         <div class="space-y-4">
+             <section data-tab-content="style" class="space-y-4">
+                  <textarea id="text-input" placeholder="Text Content" rows="3"></textarea>
+                  <select id="font-family-select"></select>
+                  <div class="grid grid-cols-2 gap-2">
+                      <input type="number" id="font-size" min="1" placeholder="Size">
+                      <input type="color" id="text-color">
+                  </div>
+                   <fieldset class="border-t border-gray-700 pt-3 space-y-3">
+                        <legend class="text-xs font-semibold text-gray-400 px-1">Border</legend>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="range" id="border-width" min="0" max="25" class="w-full self-center">
+                            <input type="color" id="border-color">
+                        </div>
+                    </fieldset>
+                    <fieldset class="border-t border-gray-700 pt-3 space-y-3">
+                        <legend class="text-xs font-semibold text-gray-400 px-1">Text Wrap</legend>
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="text-wrap-mode"><option value="auto">Auto</option><option value="custom">Custom</option></select>
+                            <input type="number" id="text-width" min="10" placeholder="Width (px)">
+                        </div>
+                    </fieldset>
+             </section>
+             <section data-tab-content="layout" class="hidden space-y-4">
+                <fieldset class="border-t border-gray-700 pt-3 space-y-3">
+                    <legend class="text-xs font-semibold text-gray-400 px-1">Position</legend>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="position-x" placeholder="X Pos">
+                        <input type="number" id="position-y" placeholder="Y Pos">
+                    </div>
+                </fieldset>
+                <fieldset class="border-t border-gray-700 pt-3 space-y-3">
+                    <legend class="text-xs font-semibold text-gray-400 px-1">Rotation</legend>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-gray-400">Deg</label>
+                        <input type="range" id="rotation" min="-180" max="180" class="w-full">
+                        <input type="number" id="rotation-input" min="-180" max="180" class="w-20 text-center">
+                    </div>
+                </fieldset>
+             </section>
+              <section data-tab-content="effects" class="hidden space-y-4">
+                <fieldset class="border-t border-gray-700 pt-3 space-y-3">
+                    <legend class="text-xs font-semibold text-gray-400 px-1">Drop Shadow</legend>
+                     <div class="grid grid-cols-5 items-center gap-2">
+                        <label class="text-xs text-gray-400 col-span-1">X</label>
+                        <input type="range" id="shadow-x" min="-50" max="50" class="w-full col-span-4">
+                    </div>
+                    <div class="grid grid-cols-5 items-center gap-2">
+                        <label class="text-xs text-gray-400 col-span-1">Y</label>
+                        <input type="range" id="shadow-y" min="-50" max="50" class="w-full col-span-4">
+                    </div>
+                    <div class="grid grid-cols-5 items-center gap-2">
+                        <label class="text-xs text-gray-400 col-span-1">Blur</label>
+                        <input type="range" id="shadow-blur" min="0" max="50" class="w-full col-span-4">
+                    </div>
+                    <input type="color" id="shadow-color">
+                  </fieldset>
+             </section>
+         </div>
+    </template>
+
+    <template id="animation-panel-template">
+        <div class="space-y-4">
+             <input type="number" id="start-time" min="0" step="0.1" placeholder="Start Time (s)">
+             <fieldset class="border-t border-gray-700 pt-3 space-y-3">
+               <legend class="text-xs font-semibold text-gray-400 px-1">In-Animation</legend>
+               <div class="grid grid-cols-2 gap-2">
+                   <select id="animation-style" title="In-Animation Style"></select>
+                   <select id="animation-easing" title="In-Animation Easing"></select>
+               </div>
+               <input type="number" id="animation-duration" min="0.1" step="0.1" placeholder="In Duration (s)">
+             </fieldset>
+             <input type="number" id="stay-duration" min="0" step="0.1" placeholder="Stay Duration (s)">
+             <fieldset class="border-t border-gray-700 pt-3 space-y-3">
+               <legend class="text-xs font-semibold text-gray-400 px-1">Out-Animation</legend>
+               <div class="grid grid-cols-2 gap-2">
+                   <select id="out-animation-style" title="Out-Animation Style"></select>
+                   <select id="out-animation-easing" title="Out-Animation Easing"></select>
+               </div>
+               <input type="number" id="out-animation-duration" min="0.1" step="0.1" placeholder="Out Duration (s)">
+             </fieldset>
+        </div>
+    </template>
+
+    <template id="presets-panel-template">
+        <div class="space-y-4">
+            <div data-preset-section="style"></div>
+            <div data-preset-section="layout"></div>
+            <div data-preset-section="animation"></div>
+            <div data-preset-section="clip"></div>
+        </div>
+    </template>
+
+    <template id="preset-ui-template">
+        <fieldset class="border-t border-gray-700 pt-3 space-y-3">
+            <legend class="text-xs font-semibold text-gray-400 px-1 preset-title">Presets</legend>
+             <div class="flex gap-2">
+                 <select class="preset-select flex-grow"><option value="">Apply Preset...</option></select>
+                 <button class="save-preset-btn flex-shrink-0 flex items-center justify-center w-10 h-10 bg-sky-600 text-white rounded-md hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                 </button>
+                 <button class="delete-preset-btn flex-shrink-0 flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-md hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                 </button>
+             </div>
+        </fieldset>
+    </template>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const canvas = document.getElementById('animation-canvas');
+            const ctx = canvas.getContext('2d');
+            const inspectorPlaceholder = document.getElementById('inspector-placeholder');
+            const timelineRuler = document.getElementById('timeline-ruler');
+            const mainTracks = document.getElementById('main-tracks');
+            const subtitleTrack = document.getElementById('subtitle-track');
+            const trackHeaders = document.getElementById('track-headers');
+            const timelinePanel = document.getElementById('timeline-panel');
+            const timelineScrollContainer = document.getElementById('timeline-scroll-container');
+            const playhead = document.getElementById('playhead');
+
+            const clipInspectorTemplate = document.getElementById('clip-inspector-template');
+            const animationPanelTemplate = document.getElementById('animation-panel-template');
+            const presetsPanelTemplate = document.getElementById('presets-panel-template');
+            const presetUITemplate = document.getElementById('preset-ui-template');
+
+            const rightPanelContainers = {
+                inspector: document.getElementById('inspector-panel-container'),
+                animation: document.getElementById('animation-panel-container'),
+                presets: document.getElementById('presets-panel-container'),
+            }
+
+            const globalControls = {
+                bgColor: document.getElementById('bg-color'),
+                addLayerBtn: document.getElementById('add-layer-btn'),
+                duplicateLayerBtn: document.getElementById('duplicate-layer-btn'),
+                deleteLayerBtn: document.getElementById('delete-layer-btn'),
+                layersList: document.getElementById('layers-list'),
+                addSubtitleBtn: document.getElementById('add-subtitle-btn'),
+                importSrtBtn: document.getElementById('import-srt-btn'),
+                deleteSubtitleBtn: document.getElementById('delete-subtitle-btn'),
+                subtitlesList: document.getElementById('subtitles-list'),
+                totalDurationInput: document.getElementById('total-duration-input'),
+                outputFilename: document.getElementById('output-filename'),
+                exportResolution: document.getElementById('export-resolution'),
+                exportFormat: document.getElementById('export-format'),
+                startBtn: document.getElementById('start-btn'),
+                startBtnText: document.getElementById('start-btn-text'),
+                startBtnIcon: document.getElementById('start-btn-icon'),
+                downloadLink: document.getElementById('download-link'),
+                downloadSection: document.getElementById('download-section'),
+                recordingIndicator: document.getElementById('recording-indicator'),
+                previewPlayPauseBtn: document.getElementById('preview-play-pause-btn'),
+                playIcon: document.getElementById('play-icon'),
+                pauseIcon: document.getElementById('pause-icon'),
+                currentTimeDisplay: document.getElementById('current-time-display'),
+                totalTimeDisplay: document.getElementById('total-time-display'),
+                timelineZoom: document.getElementById('timeline-zoom'),
+                viewerBgColor: document.getElementById('viewer-bg-color'),
+            };
+            
+            const modalElements = {
+                backdrop: document.getElementById('modal-backdrop'),
+                content: document.getElementById('modal-content'),
+                title: document.getElementById('modal-title'),
+                body: document.getElementById('modal-body'),
+                text: document.getElementById('modal-text'),
+                input: document.getElementById('modal-input'),
+                confirmBtn: document.getElementById('modal-confirm-btn'),
+                cancelBtn: document.getElementById('modal-cancel-btn'),
+            };
+
+            // --- State ---
+            let animationFrameId;
+            let mediaRecorder;
+            let recordedChunks = [];
+            let textElements = [];
+            let subtitleElements = [];
+            let selectedIds = [];
+            let selectionType = null; // 'clip' or 'subtitle'
+            let lastSelectedId = null; 
+            
+            let globalState = {
+                bgColor: '#111827',
+                totalDuration: 5000,
+                pixelsPerSecond: 100,
+                subtitlesVisible: true,
+            };
+            let previewState = {
+                isPlaying: true,
+                time: 0,
+                lastTimestamp: 0,
+            };
+            
+            let presets = {
+                clip: [], style: [], layout: [], animation: []
+            };
+            let subtitlePresets = {
+                clip: [], style: [], layout: [], animation: []
+            };
+
+            const presetPropertyMap = {
+                style: ['fontFamily', 'fontSize', 'textColor', 'borderWidth', 'borderColor', 'wrapMode', 'width'],
+                layout: ['relativeX', 'relativeY', 'rotation'],
+                effects: ['shadowX', 'shadowY', 'shadowBlur', 'shadowColor'],
+                animation: ['animationStyle', 'animationEasing', 'animationDuration', 'stayDuration', 'outAnimationStyle', 'outAnimationEasing', 'outAnimationDuration', 'startTime'],
+            };
+            presetPropertyMap.layoutAndEffects = [...presetPropertyMap.layout, ...presetPropertyMap.effects];
+            presetPropertyMap.clip = [...presetPropertyMap.style, ...presetPropertyMap.layoutAndEffects, ...presetPropertyMap.animation];
+            
+            const PRESET_STORAGE_KEYS = {
+                clip: 'proTextAnimClipPresets',
+                style: 'proTextAnimStylePresets',
+                layout: 'proTextAnimLayoutPresets',
+                animation: 'proTextAnimAnimationPresets',
+            };
+
+            // --- Populate Dynamic Selects ---
+            const fonts = ["Inter", "Poppins", "Lobster", "Roboto Mono", "Pacifico", "Playfair Display", "Bangers", "Oswald", "Merriweather"];
+            const inAnimations = { 
+                none: "None", 
+                fadeAndScale: "Fade & Scale In", 
+                slideIn: "Slide In From Left", 
+                typewriter: "Typewriter",
+                typewriterEnhanced: "Typewriter+",
+                fadeInWord: "Fade In (Word)",
+                bounceInWord: "Bounce In (Word)",
+                blurIn: "Blur In",
+                riseUp: "Rise Up", 
+                dropIn: "Drop In (Bounce)", 
+                rotateIn: "Rotate In" 
+            };
+            const outAnimations = { 
+                none: "None", 
+                fadeOut: "Fade Out", 
+                slideOut: "Slide Out To Right", 
+                scaleOut: "Scale Out",
+                zoomOut: "Zoom Out",
+                fall: "Fall"
+            };
+            const subtitleAnimations = { 
+                none: "None", 
+                fadeIn: "Fade In", 
+                slideUp: "Slide Up",
+                fadeInWord: "Fade In (Word)",
+            };
+            const easingFunctions = { linear: "Linear", easeInCubic: "Ease In", easeOutCubic: "Ease Out", easeInOutCubic: "Ease In-Out", easeOutBounce: "Bounce" };
+            const populateSelect = (selectEl, options) => {
+                if (!selectEl) return;
+                selectEl.innerHTML = '';
+                for(const [key, value] of Object.entries(options)) {
+                    selectEl.innerHTML += `<option value="${key}">${value}</option>`;
+                }
+            };
+            
+            // --- State Management & UI Sync ---
+            function updateControlsUI() {
+                globalControls.deleteLayerBtn.disabled = selectionType !== 'clip' || selectedIds.length === 0;
+                globalControls.duplicateLayerBtn.disabled = selectionType !== 'clip' || selectedIds.length === 0;
+                globalControls.deleteSubtitleBtn.disabled = selectionType !== 'subtitle' || selectedIds.length === 0;
+                
+                Object.values(rightPanelContainers).forEach(c => c.innerHTML = '');
+
+                if (selectedIds.length === 0) {
+                    inspectorPlaceholder.classList.remove('hidden');
+                } else {
+                    inspectorPlaceholder.classList.add('hidden');
+                    if (selectionType === 'clip') {
+                         if(selectedIds.length === 1) {
+                            const el = textElements.find(e => e.id === selectedIds[0]);
+                            if(el) {
+                                renderClipInspector(el);
+                                renderAnimationPanel(el);
+                                renderPresetsPanel(el);
+                            }
+                         } else {
+                            inspectorPlaceholder.classList.remove('hidden');
+                         }
+                    } else if (selectionType === 'subtitle') {
+                         renderSubtitleInspector();
+                    }
+                }
+                renderLayersList();
+                renderSubtitlesList();
+            }
+
+            function renderLayersList() {
+                globalControls.layersList.innerHTML = '';
+                 if (textElements.length === 0) {
+                    globalControls.layersList.innerHTML = `<div class="text-center text-gray-500 pt-10 text-xs">
+                        <p>No clips yet.</p>
+                        <p>Click the <span class="text-sky-400 font-semibold">+</span> button to add one.</p>
+                    </div>`;
+                    return;
+                }
+                 textElements.forEach((el) => {
+                    const isSelected = selectionType === 'clip' && selectedIds.includes(el.id);
+                    const itemWrapper = document.createElement('div');
+                    itemWrapper.className = `border rounded-md transition-all duration-200 cursor-pointer ${isSelected ? 'bg-sky-900/50 border-sky-500' : 'border-transparent hover:border-gray-600'}`;
+                    itemWrapper.innerHTML = `<div class="p-2 flex items-center gap-3">
+                        <div class="w-3 h-3 rounded-sm flex-shrink-0" style="background-color:${el.textColor}"></div>
+                        <span class="flex-grow truncate">${el.text.split('\n')[0] || 'Untitled'}</span>
+                    </div>`;
+                    itemWrapper.addEventListener('click', (e) => handleSelection(el.id, 'clip', e.metaKey || e.ctrlKey, e.shiftKey));
+                    globalControls.layersList.appendChild(itemWrapper);
+                });
+            }
+
+            function renderSubtitlesList() {
+                globalControls.subtitlesList.innerHTML = '';
+                if (subtitleElements.length === 0) {
+                    globalControls.subtitlesList.innerHTML = `<div class="text-center text-gray-500 pt-10 text-xs">
+                        <p>No subtitles.</p>
+                        <p>Add or import subtitles to begin.</p>
+                    </div>`;
+                    return;
+                }
+                const sortedSubs = [...subtitleElements].sort((a,b) => a.startTime - b.startTime);
+                sortedSubs.forEach(sub => {
+                    const isSelected = selectionType === 'subtitle' && selectedIds.includes(sub.id);
+                    const itemWrapper = document.createElement('div');
+                    itemWrapper.className = `border rounded-md transition-all duration-200 cursor-pointer ${isSelected ? 'bg-emerald-900/50 border-emerald-500' : 'border-transparent hover:border-gray-600'}`;
+                    itemWrapper.innerHTML = `<div class="p-2 flex items-center gap-3">
+                        <span class="flex-grow truncate">${sub.text.split('\n')[0] || 'Untitled'}</span>
+                    </div>`;
+                     itemWrapper.addEventListener('click', (e) => handleSelection(sub.id, 'subtitle', e.metaKey || e.ctrlKey, e.shiftKey));
+                    globalControls.subtitlesList.appendChild(itemWrapper);
+                });
+            }
+
+            function addElement() {
+                const newElement = {
+                    id: Date.now(), text: `Clip ${textElements.length + 1}`, fontFamily: 'Poppins', fontSize: 100, textColor: '#FFFFFF',
+                    relativeX: 0.5, relativeY: 0.5, rotation: 0, borderWidth: 0, borderColor: '#000000',
+                    startTime: previewState.time, animationStyle: 'fadeAndScale', animationEasing: 'easeOutCubic', animationDuration: 500,
+                    stayDuration: 2000, outAnimationStyle: 'fadeOut', outAnimationEasing: 'easeInCubic', outAnimationDuration: 500,
+                    shadowX: 0, shadowY: 0, shadowBlur: 0, shadowColor: '#000000',
+                    wrapMode: 'auto', width: canvas.width * 0.9,
+                };
+                textElements.push(newElement);
+                handleSelection(newElement.id, 'clip', false, false);
+                renderTimeline();
+            }
+
+            function deleteElement() {
+                if (selectionType !== 'clip' || selectedIds.length === 0) return;
+                showConfirmModal('Delete Clips?', `Are you sure you want to delete ${selectedIds.length} clip(s)?`, (confirmed) => {
+                    if(confirmed) {
+                        textElements = textElements.filter(el => !selectedIds.includes(el.id));
+                        handleSelection(null, null, false, false);
+                        renderTimeline();
+                    }
+                });
+            }
+
+            function addSubtitleElement() {
+                const newSub = {
+                    id: Date.now(), text: 'New Subtitle', startTime: previewState.time, endTime: previewState.time + 3000,
+                    fontFamily: 'Inter', fontSize: 48, textColor: '#FFFFFF', borderWidth: 2, borderColor: '#000000',
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', relativeX: 0.5, relativeY: 0.95,
+                    shadowX: 0, shadowY: 2, shadowBlur: 4, shadowColor: '#000000',
+                    inAnimation: 'fadeIn', outAnimation: 'fadeIn',
+                    wrapMode: 'auto', width: canvas.width * 0.95,
+                };
+                subtitleElements.push(newSub);
+                handleSelection(newSub.id, 'subtitle', false, false);
+                renderTimeline();
+            }
+
+            function deleteSubtitleElement() {
+                 if (selectionType !== 'subtitle' || selectedIds.length === 0) return;
+                 showConfirmModal('Delete Subtitles?', `Are you sure you want to delete ${selectedIds.length} subtitle(s)?`, (confirmed) => {
+                    if (confirmed) {
+                        subtitleElements = subtitleElements.filter(s => !selectedIds.includes(s.id));
+                        handleSelection(null, null, false, false);
+                        renderTimeline();
+                    }
+                });
+            }
+            
+            function handleSelection(clickedId, clickedType, isCtrl, isShift) {
+                const sourceArray = clickedType === 'clip' ? textElements : [...subtitleElements].sort((a,b) => a.startTime - b.startTime);
+
+                if(clickedType !== selectionType) {
+                    selectedIds = [clickedId];
+                    selectionType = clickedType;
+                    lastSelectedId = clickedId;
+                } else {
+                    if (isShift && lastSelectedId) {
+                        const lastIndex = sourceArray.findIndex(el => el.id === lastSelectedId);
+                        const clickedIndex = sourceArray.findIndex(el => el.id === clickedId);
+                        if (lastIndex === -1 || clickedIndex === -1) { // Safety check
+                             selectedIds = [clickedId];
+                        } else {
+                            const start = Math.min(lastIndex, clickedIndex);
+                            const end = Math.max(lastIndex, clickedIndex);
+                            const rangeIds = sourceArray.slice(start, end + 1).map(el => el.id);
+                            if(isCtrl) {
+                                selectedIds = [...new Set([...selectedIds, ...rangeIds])];
+                            } else {
+                                selectedIds = rangeIds;
+                            }
+                        }
+                    } else if (isCtrl) {
+                        const indexInSelection = selectedIds.indexOf(clickedId);
+                        if (indexInSelection > -1) {
+                            selectedIds.splice(indexInSelection, 1);
+                        } else {
+                            selectedIds.push(clickedId);
+                        }
+                        lastSelectedId = clickedId;
+                    } else {
+                        if (selectedIds.includes(clickedId) && selectedIds.length === 1) {
+                            selectedIds = [];
+                            lastSelectedId = null;
+                            selectionType = null;
+                        } else {
+                            selectedIds = [clickedId];
+                            lastSelectedId = clickedId;
+                        }
+                    }
+                }
+                 if(selectedIds.length === 0) selectionType = null;
+
+                updateControlsUI();
+                renderTimeline();
+            }
+
+            // --- Timeline Rendering and Interaction ---
+            function renderRuler() {
+                timelineRuler.innerHTML = ''; // Clear previous ruler
+                const duration = globalState.totalDuration / 1000;
+                const totalWidth = duration * globalState.pixelsPerSecond;
+                timelineRuler.style.width = `${totalWidth}px`;
+                for(let i = 0; i <= duration; i++) {
+                    const mark = document.createElement('div');
+                    mark.className = 'absolute top-0 h-full flex items-end text-xs text-gray-500 pointer-events-none';
+                    mark.style.left = `${i * globalState.pixelsPerSecond}px`;
+                    mark.innerHTML = `<span class="transform -translate-x-1/2">${i}s</span>`;
+                    const tick = document.createElement('div');
+                    tick.className = 'absolute top-0 h-2 w-px bg-gray-500 pointer-events-none';
+                    tick.style.left = `${i * globalState.pixelsPerSecond}px`;
+                    timelineRuler.appendChild(mark);
+                    timelineRuler.appendChild(tick);
+                }
+                timelineRuler.appendChild(playhead);
+            }
+            
+            function createClipDOM(element, options) {
+                const clip = document.createElement('div');
+                const isSelected = selectionType === options.type && selectedIds.includes(element.id);
+                clip.className = `timeline-clip ${isSelected ? options.selectedClass : options.baseClass}`;
+                clip.style.left = `${options.left}px`;
+                clip.style.width = `${Math.max(20, options.width)}px`;
+                clip.style.top = `${options.top}px`;
+                clip.style.borderColor = options.borderColor;
+                clip.textContent = element.text.split('\n')[0];
+                
+                // Drag body
+                clip.addEventListener('mousedown', (e) => { 
+                    e.stopPropagation(); 
+                    if (e.target.classList.contains('clip-handle')) return; 
+
+                    const wasSelected = selectedIds.includes(element.id);
+                    if (!wasSelected) {
+                        handleSelection(element.id, options.type, e.metaKey || e.ctrlKey, e.shiftKey);
+                    }
+                    
+                    const startX = e.clientX;
+                    const initialStartTimes = new Map(selectedIds.map(id => [id, (options.type === 'clip' ? textElements : subtitleElements).find(el => el.id === id).startTime]));
+                    const initialEndTimes = options.type === 'subtitle' ? new Map(selectedIds.map(id => [id, subtitleElements.find(el => el.id === id).endTime])) : null;
+
+                    const onMouseMove = (moveEvent) => {
+                        const deltaX = moveEvent.clientX - startX;
+                        const deltaTime = (deltaX / globalState.pixelsPerSecond) * 1000;
+                        
+                        selectedIds.forEach(id => {
+                            const el = (options.type === 'clip' ? textElements : subtitleElements).find(item => item.id === id);
+                            const initialStartTime = initialStartTimes.get(id);
+                            const newStartTime = Math.max(0, initialStartTime + deltaTime);
+                            if(options.type === 'subtitle') {
+                                const initialEndTime = initialEndTimes.get(id);
+                                const duration = initialEndTime - initialStartTime;
+                                el.startTime = newStartTime;
+                                el.endTime = newStartTime + duration;
+                            } else {
+                                 el.startTime = newStartTime;
+                            }
+                        });
+                        
+                        updateControlsUI();
+                        renderTimeline();
+                    };
+
+                    const onMouseUp = () => window.removeEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp, { once: true });
+                });
+
+                // Handles
+                const leftHandle = document.createElement('div');
+                leftHandle.className = 'clip-handle left';
+                clip.appendChild(leftHandle);
+                leftHandle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    const startX = e.clientX;
+                    const initialStartTime = element.startTime;
+                    const initialEndTime = element.endTime;
+                    const initialStayDuration = element.stayDuration;
+
+                    const onMouseMove = (moveEvent) => {
+                       const deltaX = moveEvent.clientX - startX;
+                       const deltaTime = (deltaX / globalState.pixelsPerSecond) * 1000;
+                       const newStart = Math.max(0, initialStartTime + deltaTime);
+                       
+                       if(options.type === 'subtitle') {
+                           element.startTime = Math.min(newStart, initialEndTime - 100);
+                       } else {
+                           const newStay = Math.max(100, initialStayDuration - (newStart - initialStartTime));
+                           element.startTime = newStart;
+                           element.stayDuration = newStay;
+                       }
+                       updateControlsUI();
+                       renderTimeline();
+                    };
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', () => window.removeEventListener('mousemove', onMouseMove), { once: true });
+                });
+
+                const rightHandle = document.createElement('div');
+                rightHandle.className = 'clip-handle right';
+                clip.appendChild(rightHandle);
+                rightHandle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    const startX = e.clientX;
+                    const initialEndTime = element.endTime;
+                    const initialStayDuration = element.stayDuration;
+
+                    const onMouseMove = (moveEvent) => {
+                       const deltaX = moveEvent.clientX - startX;
+                       const deltaTime = (deltaX / globalState.pixelsPerSecond) * 1000;
+
+                       if(options.type === 'subtitle') {
+                           element.endTime = Math.max(element.startTime + 100, initialEndTime + deltaTime);
+                       } else {
+                           element.stayDuration = Math.max(100, initialStayDuration + deltaTime);
+                       }
+                       updateControlsUI();
+                       renderTimeline();
+                    };
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', () => window.removeEventListener('mousemove', onMouseMove), { once: true });
+                });
+
+                return clip;
+            }
+
+            function renderTimeline() {
+                const totalWidth = globalState.totalDuration / 1000 * globalState.pixelsPerSecond;
+                mainTracks.innerHTML = '';
+                trackHeaders.innerHTML = '';
+                mainTracks.style.width = `${totalWidth}px`;
+                mainTracks.style.height = `${textElements.length * 44}px`;
+
+                textElements.forEach((el, index) => {
+                    const trackHeader = document.createElement('div');
+                    trackHeader.className = 'h-11 flex items-center px-2 text-gray-400 border-b border-gray-700/50';
+                    trackHeader.innerHTML = `Clip ${index + 1}`;
+                    trackHeaders.appendChild(trackHeader);
+
+                    const clipDuration = el.animationDuration + el.stayDuration + el.outAnimationDuration;
+                    const clip = createClipDOM(el, {
+                        type: 'clip',
+                        left: el.startTime / 1000 * globalState.pixelsPerSecond,
+                        width: clipDuration / 1000 * globalState.pixelsPerSecond,
+                        top: index * 44 + 4,
+                        borderColor: el.textColor,
+                        baseClass: 'bg-sky-900/70',
+                        selectedClass: 'bg-sky-700 ring-2 ring-sky-400 z-10'
+                    });
+                    mainTracks.appendChild(clip);
+                });
+
+                subtitleTrack.innerHTML = '';
+                subtitleTrack.style.width = `${totalWidth}px`;
+
+                if (subtitleElements.length > 0) {
+                     const subTrackHeader = document.createElement('div');
+                    subTrackHeader.className = 'h-11 flex items-center px-2 text-gray-400 border-b border-gray-700/50';
+                    subTrackHeader.innerHTML = `<div class="flex items-center gap-2">
+                        <span>Subtitles</span>
+                        <button id="toggle-subtitle-visibility-btn" title="Toggle Subtitle Track Visibility" class="text-gray-400 hover:text-white">
+                            <svg class="w-4 h-4" id="subtitle-visible-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            <svg class="w-4 h-4 hidden" id="subtitle-hidden-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        </button>
+                    </div>`;
+                    trackHeaders.appendChild(subTrackHeader);
+                    
+                    subtitleTrack.style.height = `44px`;
+
+                    subtitleElements.forEach((sub) => {
+                        const clipDuration = sub.endTime - sub.startTime;
+                        const clip = createClipDOM(sub, {
+                            type: 'subtitle',
+                            left: sub.startTime / 1000 * globalState.pixelsPerSecond,
+                            width: clipDuration / 1000 * globalState.pixelsPerSecond,
+                            top: 4,
+                            borderColor: '#4ade80',
+                            baseClass: 'bg-emerald-900/70',
+                            selectedClass: 'bg-emerald-700 ring-2 ring-emerald-400 z-10'
+                        });
+                        subtitleTrack.appendChild(clip);
+                    });
+                }
+            }
+
+            const easings = { linear: t => t, easeInCubic: t => t * t * t, easeOutCubic: t => 1 - Math.pow(1 - t, 3), easeInOutCubic: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, easeOutBounce: t => { const n1 = 7.5625; const d1 = 2.75; if (t < 1 / d1) { return n1 * t * t; } else if (t < 2 / d1) { return n1 * (t -= 1.5 / d1) * t + 0.75; } else if (t < 2.5 / d1) { return n1 * (t -= 2.25 / d1) * t + 0.9375; } else { return n1 * (t -= 2.625 / d1) * t + 0.984375; } }, };
+            const drawBase = () => { ctx.fillStyle = globalState.bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height); };
+            const applyRotation = (el, x, y) => { ctx.translate(x, y); ctx.rotate(el.rotation * Math.PI / 180); }
+            
+            const drawTextWithStyles = (textToDraw, el, lineCallback) => {
+                ctx.font = `bold ${el.fontSize}px '${el.fontFamily}', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                const maxWidth = el.wrapMode === 'auto' ? canvas.width * 0.9 : el.width;
+                const lineHeight = el.fontSize * 1.2;
+
+                const initialLines = textToDraw.split('\n');
+                const finalLines = [];
+
+                initialLines.forEach(initialLine => {
+                    const words = initialLine.split(' ');
+                    let line = '';
+                    for (let n = 0; n < words.length; n++) {
+                        const testLine = line + words[n] + ' ';
+                        const metrics = ctx.measureText(testLine);
+                        if (metrics.width > maxWidth && n > 0) {
+                            finalLines.push(line.trim());
+                            line = words[n] + ' ';
+                        } else {
+                            line = testLine;
+                        }
+                    }
+                    finalLines.push(line.trim());
+                });
+
+                const totalHeight = (finalLines.length - 1) * lineHeight;
+                const startY = -totalHeight / 2;
+                const x = 0;
+
+                const drawLines = (isStroke) => {
+                    for (let i = 0; i < finalLines.length; i++) {
+                        const lineY = startY + (i * lineHeight);
+                        if (lineCallback) {
+                            lineCallback(finalLines[i], x, lineY, isStroke);
+                        } else {
+                            ctx[isStroke ? 'strokeText' : 'fillText'](finalLines[i], x, lineY);
+                        }
+                    }
+                };
+                
+                ctx.shadowOffsetX = el.shadowX; ctx.shadowOffsetY = el.shadowY; ctx.shadowBlur = el.shadowBlur; ctx.shadowColor = el.shadowColor;
+                ctx.fillStyle = el.textColor;
+                drawLines(false);
+
+                if (el.borderWidth > 0) {
+                    ctx.shadowColor = 'transparent';
+                    ctx.lineWidth = el.borderWidth;
+                    ctx.strokeStyle = el.borderColor;
+                    drawLines(true);
+                }
+            };
+            
+            const drawTextWordByWord = (textToDraw, el, wordCallback) => {
+                ctx.font = `bold ${el.fontSize}px '${el.fontFamily}', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const maxWidth = el.wrapMode === 'auto' ? canvas.width * 0.9 : el.width;
+                const lineHeight = el.fontSize * 1.2;
+                const spaceWidth = ctx.measureText(' ').width;
+
+                const initialLines = textToDraw.split('\n');
+                const finalLines = [];
+                initialLines.forEach(initialLine => {
+                    const words = initialLine.split(' ');
+                    let line = '';
+                    for (let n = 0; n < words.length; n++) {
+                        const testLine = line + words[n] + ' ';
+                        if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+                            finalLines.push(line.trim());
+                            line = words[n] + ' ';
+                        } else { line = testLine; }
+                    }
+                    finalLines.push(line.trim());
+                });
+
+                const totalHeight = (finalLines.length - 1) * lineHeight;
+                const startY = -totalHeight / 2;
+                let wordIndex = 0;
+
+                for (let i = 0; i < finalLines.length; i++) {
+                    const line = finalLines[i];
+                    const words = line.split(' ');
+                    const lineWidth = ctx.measureText(line).width;
+                    let currentX = -lineWidth / 2;
+
+                    for (const word of words) {
+                        const wordWidth = ctx.measureText(word).width;
+                        const wordCenterX = currentX + wordWidth / 2;
+                        const wordCenterY = startY + (i * lineHeight);
+                        wordCallback(word, wordCenterX, wordCenterY, wordIndex, words.length);
+                        currentX += wordWidth + spaceWidth;
+                        wordIndex++;
+                    }
+                }
+                return wordIndex; // Total words
+            };
+
+            const animationStyles = { 
+                none: (progress, el, easedProgress) => { ctx.save(); applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                fadeAndScale: (progress, el, easedProgress) => { ctx.save(); const scale = 0.8 + easedProgress * 0.2; ctx.globalAlpha = easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                slideIn: (progress, el, easedProgress) => { ctx.save(); const startX = -el.fontSize - (el.relativeX * canvas.width); const x = startX + (easedProgress * (el.relativeX * canvas.width - startX)); ctx.globalAlpha = easedProgress; applyRotation(el, x, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                typewriter: (progress, el, easedProgress) => { ctx.save(); applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); const len = Math.floor(el.text.length * easedProgress); const displayedText = el.text.substring(0, len); drawTextWithStyles(displayedText, el); ctx.restore(); }, 
+                typewriterEnhanced: (progress, el, easedProgress) => {
+                    ctx.save();
+                    applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height);
+                    const len = Math.floor(el.text.length * easedProgress);
+                    const displayedText = el.text.substring(0, len);
+                    let cursorVisible = true;
+                    if(progress < 1) cursorVisible = Math.floor(Date.now() / 400) % 2 === 0;
+
+                    drawTextWithStyles(displayedText, el, (line, x, y, isStroke) => {
+                         if (!isStroke) {
+                            ctx.textAlign = 'left';
+                            const lineMetrics = ctx.measureText(line);
+                            const startX = -lineMetrics.width / 2;
+                            ctx.fillText(line, startX, y);
+                            if (cursorVisible) {
+                                ctx.fillRect(startX + lineMetrics.width + 2, y - el.fontSize / 2, 4, el.fontSize);
+                            }
+                            ctx.textAlign = 'center';
+                        }
+                    });
+                    ctx.restore();
+                },
+                fadeInWord: (progress, el, easedProgress) => {
+                     ctx.save();
+                     applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height);
+                     const totalWords = drawTextWordByWord(el.text, el, (word, x, y, index, numWords) => {
+                         const wordProgress = Math.max(0, Math.min(1, (easedProgress * numWords) - index));
+                         ctx.save();
+                         ctx.globalAlpha = wordProgress;
+                         ctx.translate(x, y);
+                         drawTextWithStyles(word, el);
+                         ctx.restore();
+                     });
+                     ctx.restore();
+                },
+                bounceInWord: (progress, el, easedProgress) => {
+                     ctx.save();
+                     applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height);
+                     const totalWords = drawTextWordByWord(el.text, el, (word, x, y, index, numWords) => {
+                         const wordProgress = Math.max(0, Math.min(1, (easedProgress * numWords * 1.2) - (index * 1.2)));
+                         const bounceProgress = easings.easeOutBounce(wordProgress);
+                         const yOffset = (1 - bounceProgress) * -canvas.height / 2;
+                         ctx.save();
+                         ctx.globalAlpha = wordProgress;
+                         ctx.translate(x, y + yOffset);
+                         drawTextWithStyles(word, el);
+                         ctx.restore();
+                     });
+                     ctx.restore();
+                },
+                blurIn: (progress, el, easedProgress) => {
+                    ctx.save();
+                    const blurAmount = (1 - easedProgress) * 30;
+                    ctx.globalAlpha = easedProgress;
+                    ctx.filter = `blur(${blurAmount}px)`;
+                    applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                },
+                riseUp: (progress, el, easedProgress) => { ctx.save(); const startY = canvas.height + el.fontSize; const y = startY - (easedProgress * (startY - (el.relativeY * canvas.height))); ctx.globalAlpha = easedProgress; applyRotation(el, el.relativeX * canvas.width, y); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                dropIn: (progress, el, easedProgress) => { ctx.save(); const startY = -el.fontSize; const y = startY + (easedProgress * ((el.relativeY * canvas.height) - startY)); ctx.globalAlpha = progress < 0.1 ? progress * 10 : 1; applyRotation(el, el.relativeX * canvas.width, y); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                rotateIn: (progress, el, easedProgress) => { ctx.save(); const angle = (1 - easedProgress) * -Math.PI / 2; const scale = 0.5 + easedProgress * 0.5; ctx.globalAlpha = easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.rotate(angle); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                fadeOut: (progress, el, easedProgress) => { ctx.save(); ctx.globalAlpha = 1 - easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                slideOut: (progress, el, easedProgress) => { ctx.save(); const x = (el.relativeX * canvas.width) + (easedProgress * (canvas.width - el.relativeX * canvas.width + el.fontSize*2)); ctx.globalAlpha = 1 - easedProgress; applyRotation(el, x, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                scaleOut: (progress, el, easedProgress) => { ctx.save(); const scale = 1 - easedProgress; ctx.globalAlpha = 1 - easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); },
+                zoomOut: (progress, el, easedProgress) => { ctx.save(); const scale = 1 + easedProgress * 4; ctx.globalAlpha = 1 - easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); },
+                fall: (progress, el, easedProgress) => { ctx.save(); const y = (el.relativeY * canvas.height) + (easedProgress * (canvas.height - el.relativeY * canvas.height + el.fontSize * 2)); const rot = el.rotation + (easedProgress * 45 * (el.relativeX > 0.5 ? 1 : -1)); ctx.globalAlpha = 1-easedProgress; ctx.translate(el.relativeX * canvas.width, y); ctx.rotate(rot * Math.PI / 180); drawTextWithStyles(el.text, el); ctx.restore(); },
+            };
+
+            function drawSingleSubtitle(sub, time) {
+                const animDuration = 250; //ms
+                let alpha = 1.0;
+                let yOffset = 0;
+
+                // In Animation
+                if (time < sub.startTime + animDuration) {
+                    const progress = (time - sub.startTime) / animDuration;
+                    if(sub.inAnimation === 'fadeIn') alpha = progress;
+                    if(sub.inAnimation === 'slideUp') {
+                        alpha = progress;
+                        yOffset = (1 - progress) * (sub.fontSize * 0.5);
+                    }
+                }
+                // Out Animation
+                if (time > sub.endTime - animDuration) {
+                    const progress = (sub.endTime - time) / animDuration;
+                     if(sub.outAnimation === 'fadeIn' || sub.outAnimation === 'fadeInWord') alpha = progress; // fadeIn reversed is fadeOut
+                    if(sub.outAnimation === 'slideUp') {
+                        alpha = progress;
+                        yOffset = (1 - progress) * (sub.fontSize * 0.5);
+                    }
+                }
+                
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.font = `600 ${sub.fontSize}px '${sub.fontFamily}', sans-serif`;
+                ctx.textBaseline = 'bottom';
+                
+                const text = sub.text;
+                const x = sub.relativeX * canvas.width;
+                const y = (sub.relativeY * canvas.height) + yOffset;
+                const maxWidth = sub.wrapMode === 'auto' ? canvas.width * 0.95 : sub.width;
+                const lineHeight = sub.fontSize * 1.2;
+
+                const words = text.split(' ');
+                let line = '';
+                const lines = [];
+                let maxLineWidth = 0;
+
+                for (let n = 0; n < words.length; n++) {
+                    const testLine = line + words[n] + ' ';
+                    const metrics = ctx.measureText(testLine);
+                    if (metrics.width > maxWidth && n > 0) {
+                        lines.push(line.trim());
+                        maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line.trim()).width);
+                        line = words[n] + ' ';
+                    } else {
+                        line = testLine;
+                    }
+                }
+                lines.push(line.trim());
+                maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line.trim()).width);
+
+                const totalHeight = lines.length * lineHeight;
+                const startY = y - totalHeight;
+
+                if (sub.backgroundColor && sub.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+                    ctx.fillStyle = sub.backgroundColor;
+                    ctx.shadowColor = 'transparent';
+                    const bgPadding = 10;
+                    ctx.fillRect(x - maxLineWidth / 2 - bgPadding, startY - bgPadding + (lineHeight - sub.fontSize) / 2, maxLineWidth + (bgPadding * 2), totalHeight + (bgPadding * 2) - (lineHeight - sub.fontSize));
+                }
+                
+                ctx.textAlign = 'center';
+                ctx.shadowColor = sub.shadowColor;
+                ctx.shadowBlur = sub.shadowBlur;
+                ctx.shadowOffsetX = sub.shadowX;
+                ctx.shadowOffsetY = sub.shadowY;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const lineY = startY + (i * lineHeight) + lineHeight;
+                    ctx.fillStyle = sub.textColor;
+                    ctx.strokeStyle = sub.borderColor;
+                    ctx.lineWidth = sub.borderWidth;
+                    if (sub.borderWidth > 0) ctx.strokeText(lines[i], x, lineY);
+                    ctx.fillText(lines[i], x, lineY);
+                }
+                
+                ctx.restore();
+            }
+
+            const draw = (time) => {
+                drawBase();
+                textElements.forEach(el => {
+                    if (time < el.startTime) return; 
+                    const localTime = time - el.startTime;
+                    const totalLifetime = el.animationDuration + el.stayDuration + el.outAnimationDuration;
+                    if (localTime > totalLifetime && totalLifetime > 0) return;
+                    if (localTime <= el.animationDuration) { const progress = el.animationDuration > 0 ? localTime / el.animationDuration : 1; const easedProgress = (easings[el.animationEasing] || easings.linear)(progress); animationStyles[el.animationStyle](progress, el, easedProgress); } 
+                    else if (localTime <= el.animationDuration + el.stayDuration) { animationStyles['none'](1, el, 1); } 
+                    else { const outTime = localTime - (el.animationDuration + el.stayDuration); const progress = el.outAnimationDuration > 0 ? outTime / el.outAnimationDuration : 1; const easedProgress = (easings[el.outAnimationEasing] || easings.linear)(progress); animationStyles[el.outAnimationStyle](progress, el, easedProgress); }
+                });
+                if(globalState.subtitlesVisible) {
+                    subtitleElements.forEach(sub => {
+                        if (time >= sub.startTime && time <= sub.endTime) {
+                           drawSingleSubtitle(sub, time);
+                        }
+                    });
+                }
+            };
+            const updateTimelineUI = () => {
+                globalControls.currentTimeDisplay.textContent = (previewState.time / 1000).toFixed(1);
+                globalControls.totalTimeDisplay.textContent = (globalState.totalDuration / 1000).toFixed(1);
+                playhead.style.left = `${previewState.time / 1000 * globalState.pixelsPerSecond}px`;
+            };
+            const previewAnimationLoop = (timestamp) => {
+                if (!previewState.lastTimestamp) previewState.lastTimestamp = timestamp;
+                if (previewState.isPlaying) {
+                    const deltaTime = timestamp - previewState.lastTimestamp;
+                    previewState.time += deltaTime;
+                    if (previewState.time > globalState.totalDuration) previewState.time = 0;
+                }
+                previewState.lastTimestamp = timestamp;
+                draw(previewState.time);
+                updateTimelineUI();
+                animationFrameId = requestAnimationFrame(previewAnimationLoop);
+            };
+            const startPreviewAnimation = () => { if (animationFrameId) cancelAnimationFrame(animationFrameId); previewState.lastTimestamp = 0; animationFrameId = requestAnimationFrame(previewAnimationLoop); };
+            const setupMediaRecorder = () => {
+                const stream = canvas.captureStream(30);
+                let selectedMimeType = globalControls.exportFormat.value;
+                
+                if (!MediaRecorder.isTypeSupported(selectedMimeType)) {
+                    console.warn(`Format ${selectedMimeType} not supported. Falling back.`);
+                    selectedMimeType = 'video/webm; codecs=vp9';
+                    if (!MediaRecorder.isTypeSupported(selectedMimeType)) {
+                        selectedMimeType = 'video/webm; codecs=vp8';
+                        if (!MediaRecorder.isTypeSupported(selectedMimeType)) {
+                            selectedMimeType = 'video/webm';
+                        }
+                    }
+                }
+                
+                const options = { mimeType: selectedMimeType };
+                mediaRecorder = new MediaRecorder(stream, options);
+                
+                mediaRecorder.ondataavailable = e => { 
+                    if (e.data.size > 0) recordedChunks.push(e.data); 
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: selectedMimeType });
+                    globalControls.downloadLink.href = URL.createObjectURL(blob);
+                    const filename = globalControls.outputFilename.value.trim() || 'pro_animation';
+                    const extension = selectedMimeType.includes('mp4') ? 'mp4' : 'webm';
+                    globalControls.downloadLink.download = `${filename}.${extension}`;
+                    
+                    globalControls.downloadSection.classList.remove('hidden');
+                    globalControls.startBtn.disabled = false;
+                    globalControls.startBtnText.textContent = 'Record';
+                    globalControls.recordingIndicator.classList.add('hidden');
+                    previewState.isPlaying = true;
+                    globalControls.playIcon.classList.add('hidden');
+                    globalControls.pauseIcon.classList.remove('hidden');
+                    startPreviewAnimation();
+                };
+            };
+            
+            // --- Inspector Rendering ---
+            function renderClipInspector(el) {
+                rightPanelContainers.inspector.innerHTML = '';
+                rightPanelContainers.inspector.appendChild(clipInspectorTemplate.content.cloneNode(true));
+                
+                const inputs = {
+                    text: rightPanelContainers.inspector.querySelector('#text-input'),
+                    fontFamily: rightPanelContainers.inspector.querySelector('#font-family-select'),
+                    fontSize: rightPanelContainers.inspector.querySelector('#font-size'),
+                    textColor: rightPanelContainers.inspector.querySelector('#text-color'),
+                    borderWidth: rightPanelContainers.inspector.querySelector('#border-width'),
+                    borderColor: rightPanelContainers.inspector.querySelector('#border-color'),
+                    positionX: rightPanelContainers.inspector.querySelector('#position-x'),
+                    positionY: rightPanelContainers.inspector.querySelector('#position-y'),
+                    rotation: rightPanelContainers.inspector.querySelector('#rotation'),
+                    rotationInput: rightPanelContainers.inspector.querySelector('#rotation-input'),
+                    shadowX: rightPanelContainers.inspector.querySelector('#shadow-x'),
+                    shadowY: rightPanelContainers.inspector.querySelector('#shadow-y'),
+                    shadowBlur: rightPanelContainers.inspector.querySelector('#shadow-blur'),
+                    shadowColor: rightPanelContainers.inspector.querySelector('#shadow-color'),
+                    wrapMode: rightPanelContainers.inspector.querySelector('#text-wrap-mode'),
+                    width: rightPanelContainers.inspector.querySelector('#text-width'),
+                };
+                
+                populateSelect(inputs.fontFamily, fonts.reduce((o, key) => ({ ...o, [key]: key }), {}));
+                
+                Object.keys(inputs).forEach(key => {
+                    if(!inputs[key]) return;
+                    if (['rotation', 'rotationInput'].includes(key)) {
+                        inputs.rotation.value = el.rotation;
+                        inputs.rotationInput.value = el.rotation;
+                    } else if (key === 'positionX') {
+                        inputs.positionX.value = Math.round(el.relativeX * canvas.width);
+                    } else if (key === 'positionY') {
+                        inputs.positionY.value = Math.round(el.relativeY * canvas.height);
+                    } else {
+                         inputs[key].value = el[key];
+                    }
+                });
+
+                inputs.width.disabled = el.wrapMode === 'auto';
+
+                Object.entries(inputs).forEach(([key, inputEl]) => {
+                    inputEl.addEventListener('input', e => {
+                        let value = e.target.value;
+                         switch(key) {
+                            case 'rotation': el.rotation = parseInt(value); inputs.rotationInput.value = value; break;
+                            case 'rotationInput': el.rotation = parseInt(value); inputs.rotation.value = value; break;
+                            case 'positionX': el.relativeX = parseInt(value) / canvas.width; break;
+                            case 'positionY': el.relativeY = parseInt(value) / canvas.height; break;
+                            case 'wrapMode': el.wrapMode = value; inputs.width.disabled = value === 'auto'; break;
+                            case 'text': el.text = value; renderLayersList(); renderTimeline(); break;
+                            default: el[key] = (inputEl.type === 'number' || inputEl.type === 'range') ? parseInt(value) : value; break;
+                        }
+                    });
+                });
+
+                const inspector = rightPanelContainers.inspector;
+                inspector.querySelectorAll('[data-tab]').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        inspector.querySelectorAll('[data-tab]').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        inspector.querySelectorAll('[data-tab-content]').forEach(panel => panel.classList.add('hidden'));
+                        inspector.querySelector(`[data-tab-content="${tab.dataset.tab}"]`).classList.remove('hidden');
+                    });
+                });
+            }
+
+            function renderAnimationPanel(el) {
+                rightPanelContainers.animation.innerHTML = '';
+                rightPanelContainers.animation.appendChild(animationPanelTemplate.content.cloneNode(true));
+
+                 const inputs = {
+                    startTime: rightPanelContainers.animation.querySelector('#start-time'),
+                    animationStyle: rightPanelContainers.animation.querySelector('#animation-style'),
+                    animationEasing: rightPanelContainers.animation.querySelector('#animation-easing'),
+                    animationDuration: rightPanelContainers.animation.querySelector('#animation-duration'),
+                    stayDuration: rightPanelContainers.animation.querySelector('#stay-duration'),
+                    outAnimationStyle: rightPanelContainers.animation.querySelector('#out-animation-style'),
+                    outAnimationEasing: rightPanelContainers.animation.querySelector('#out-animation-easing'),
+                    outAnimationDuration: rightPanelContainers.animation.querySelector('#out-animation-duration'),
+                };
+                
+                populateSelect(inputs.animationStyle, inAnimations);
+                populateSelect(inputs.outAnimationStyle, outAnimations);
+                populateSelect(inputs.animationEasing, easingFunctions);
+                populateSelect(inputs.outAnimationEasing, easingFunctions);
+
+                 Object.keys(inputs).forEach(key => {
+                    if(!inputs[key]) return;
+                    if (['startTime', 'animationDuration', 'stayDuration', 'outAnimationDuration'].includes(key)) {
+                        inputs[key].value = (el[key] / 1000).toFixed(2);
+                    } else {
+                         inputs[key].value = el[key];
+                    }
+                });
+
+                 Object.entries(inputs).forEach(([key, inputEl]) => {
+                    inputEl.addEventListener('input', e => {
+                        let value = e.target.value;
+                        if (['startTime', 'animationDuration', 'stayDuration', 'outAnimationDuration'].includes(key)) {
+                            el[key] = parseFloat(value) * 1000; 
+                            renderTimeline();
+                        } else {
+                            el[key] = value;
+                        }
+                    });
+                });
+            }
+
+            function renderPresetsPanel(el) {
+                rightPanelContainers.presets.innerHTML = '';
+                rightPanelContainers.presets.appendChild(presetsPanelTemplate.content.cloneNode(true));
+                
+                const presetTypes = {
+                    style: { title: 'Style Presets' },
+                    layout: { title: 'Layout & Effects Presets' },
+                    animation: { title: 'Animation Presets' },
+                    clip: { title: 'Full Clip Presets' },
+                };
+
+                Object.keys(presetTypes).forEach(type => {
+                    const container = rightPanelContainers.presets.querySelector(`[data-preset-section="${type}"]`);
+                    const presetUI = presetUITemplate.content.cloneNode(true);
+                    
+                    presetUI.querySelector('.preset-title').textContent = presetTypes[type].title;
+                    
+                    const select = presetUI.querySelector('.preset-select');
+                    const saveBtn = presetUI.querySelector('.save-preset-btn');
+                    const deleteBtn = presetUI.querySelector('.delete-preset-btn');
+                    
+                    populateSelect(select, (presets[type] || []).reduce((obj, p) => ({...obj, [p.name]: p.name }), {}));
+
+                    select.addEventListener('change', (e) => {
+                        applyPreset(type, el, e.target.value);
+                        e.target.value = '';
+                    });
+                    saveBtn.addEventListener('click', () => savePreset(type, el));
+                    deleteBtn.addEventListener('click', () => deletePreset(type, select.value));
+
+                    container.appendChild(presetUI);
+                });
+            }
+
+            function renderSubtitleInspector() {
+                // This is a placeholder for a more complete subtitle inspector implementation
+                // that would follow the new multi-panel structure.
+                rightPanelContainers.inspector.innerHTML = `<p class="text-sm text-gray-400">Subtitle editing coming soon!</p>`;
+                rightPanelContainers.animation.innerHTML = `<p class="text-sm text-gray-400">Subtitle animation coming soon!</p>`;
+                rightPanelContainers.presets.innerHTML = `<p class="text-sm text-gray-400">Subtitle presets coming soon!</p>`;
+            }
+
+            function srtTimeToMs(timeString) { const parts = timeString.split(/[:,]/); return parseInt(parts[0],10)*3600000 + parseInt(parts[1],10)*60000 + parseInt(parts[2],10)*1000 + parseInt(parts[3],10); }
+            function parseSrt(data) {
+                const srtRegex = /(\d+)\r?\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\r?\n([\s\S]*?)(?=\r?\n\r?\n|$)/g;
+                let match;
+                while ((match = srtRegex.exec(data)) !== null) {
+                    subtitleElements.push({
+                        id: Date.now() + Math.random(), startTime: srtTimeToMs(match[2]), endTime: srtTimeToMs(match[3]),
+                        text: match[4].replace(/(\r\n|\n|\r)/gm, " ").trim(),
+                        fontFamily: 'Inter', fontSize: 48, textColor: '#FFFFFF', borderWidth: 2, borderColor: '#000000',
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)', relativeX: 0.5, relativeY: 0.95,
+                        shadowX: 0, shadowY: 2, shadowBlur: 4, shadowColor: '#000000',
+                        inAnimation: 'fadeIn', outAnimation: 'fadeIn',
+                        wrapMode: 'auto', width: canvas.width * 0.95,
+                    });
+                }
+                renderSubtitlesList(); renderTimeline();
+            }
+
+            // --- Modal Implementation ---
+            function showConfirmModal(title, text, callback) {
+                modalElements.title.textContent = title;
+                modalElements.text.textContent = text;
+                modalElements.input.classList.add('hidden');
+                modalElements.text.classList.remove('hidden');
+                
+                const confirmHandler = () => {
+                    cleanup();
+                    callback(true);
+                };
+                const cancelHandler = () => {
+                    cleanup();
+                    callback(false);
+                };
+                const cleanup = () => {
+                    modalElements.confirmBtn.removeEventListener('click', confirmHandler);
+                    modalElements.cancelBtn.removeEventListener('click', cancelHandler);
+                    modalElements.backdrop.classList.add('hidden');
+                }
+                
+                modalElements.confirmBtn.addEventListener('click', confirmHandler, { once: true });
+                modalElements.cancelBtn.addEventListener('click', cancelHandler, { once: true });
+                modalElements.backdrop.classList.remove('hidden');
+            }
+
+            function showPromptModal(title, text, value, callback) {
+                modalElements.title.textContent = title;
+                modalElements.text.textContent = text;
+                modalElements.input.value = value;
+                modalElements.input.classList.remove('hidden');
+                modalElements.text.classList.remove('hidden');
+
+                const confirmHandler = () => {
+                    cleanup();
+                    callback(modalElements.input.value);
+                };
+                const cancelHandler = () => {
+                    cleanup();
+                    callback(null);
+                };
+                const cleanup = () => {
+                    modalElements.confirmBtn.removeEventListener('click', confirmHandler);
+                    modalElements.cancelBtn.removeEventListener('click', cancelHandler);
+                    modalElements.backdrop.classList.add('hidden');
+                }
+                
+                modalElements.confirmBtn.addEventListener('click', confirmHandler, { once: true });
+                modalElements.cancelBtn.addEventListener('click', cancelHandler, { once: true });
+                modalElements.backdrop.classList.remove('hidden');
+                setTimeout(() => modalElements.input.select(), 100);
+            }
+            
+            // --- Preset Logic ---
+            function loadAllPresets() {
+                for (const type in PRESET_STORAGE_KEYS) {
+                    presets[type] = JSON.parse(localStorage.getItem(PRESET_STORAGE_KEYS[type])) || [];
+                }
+            }
+
+            function savePreset(type, el) {
+                if (!el) return;
+                showPromptModal(`Save ${type} Preset`, "Enter a name for your preset:", el.text.substring(0, 20), (name) => {
+                    if (!name || !name.trim()) return;
+
+                    const settings = {};
+                    const properties = (type === 'layout') ? [...presetPropertyMap.layout, ...presetPropertyMap.effects] : presetPropertyMap[type];
+                    properties.forEach(prop => {
+                        settings[prop] = el[prop];
+                    });
+                    
+                    const presetList = presets[type];
+                    const existingIndex = presetList.findIndex(p => p.name === name);
+                    if (existingIndex > -1) {
+                        presetList[existingIndex].settings = settings;
+                    } else {
+                        presetList.push({ name, settings });
+                    }
+
+                    localStorage.setItem(PRESET_STORAGE_KEYS[type], JSON.stringify(presetList));
+                    renderPresetsPanel(el);
+                });
+            }
+
+            function applyPreset(type, el, presetName) {
+                if (!presetName) return;
+                const preset = presets[type].find(p => p.name === presetName);
+                if (preset && preset.settings) {
+                    Object.assign(el, preset.settings);
+                    updateControlsUI();
+                    renderTimeline();
+                }
+            }
+
+            function deletePreset(type, presetName) {
+                if (!presetName) return;
+                showConfirmModal('Delete Preset?', `Are you sure you want to delete "${presetName}"?`, (confirmed) => {
+                    if (confirmed) {
+                        presets[type] = presets[type].filter(p => p.name !== presetName);
+                        localStorage.setItem(PRESET_STORAGE_KEYS[type], JSON.stringify(presets[type]));
+                        const selectedEl = textElements.find(e => e.id === selectedIds[0]);
+                        renderPresetsPanel(selectedEl);
+                    }
+                });
+            }
+
+            // --- Event Listeners ---
+            globalControls.addLayerBtn.addEventListener('click', addElement);
+            globalControls.deleteLayerBtn.addEventListener('click', deleteElement);
+            globalControls.addSubtitleBtn.addEventListener('click', addSubtitleElement);
+            globalControls.deleteSubtitleBtn.addEventListener('click', deleteSubtitleElement);
+            globalControls.importSrtBtn.addEventListener('click', () => { const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = '.srt'; fileInput.onchange = (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => parseSrt(e.target.result); reader.readAsText(file); } }; fileInput.click(); });
+            globalControls.bgColor.addEventListener('input', (e) => { globalState.bgColor = e.target.value; });
+            globalControls.exportResolution.addEventListener('change', (e) => { const [width, height] = e.target.value.split('x').map(Number); setCanvasResolution(width, height); });
+            globalControls.totalDurationInput.addEventListener('input', (e) => { globalState.totalDuration = Math.max(1000, parseInt(e.target.value, 10) * 1000); updateTimelineUI(); renderTimeline(); renderRuler(); });
+            globalControls.previewPlayPauseBtn.addEventListener('click', () => { previewState.isPlaying = !previewState.isPlaying; if (previewState.isPlaying) { previewState.lastTimestamp = 0; globalControls.playIcon.classList.add('hidden'); globalControls.pauseIcon.classList.remove('hidden'); } else { globalControls.playIcon.classList.remove('hidden'); globalControls.pauseIcon.classList.add('hidden'); } });
+            timelineScrollContainer.addEventListener('mousedown', (e) => { if (e.target.closest('.timeline-clip')) return; let isScrubbing = true; previewState.isPlaying = false; globalControls.playIcon.classList.remove('hidden'); globalControls.pauseIcon.classList.add('hidden'); handleScrub(e); const onMouseMove = (moveEvent) => { if (isScrubbing) { handleScrub(moveEvent); } }; const onMouseUp = () => { isScrubbing = false; window.removeEventListener('mousemove', onMouseMove); }; window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp, {once: true}); });
+            document.querySelectorAll('[data-left-tab]').forEach(tab => { tab.addEventListener('click', () => { document.querySelectorAll('[data-left-tab]').forEach(t => t.classList.remove('active')); tab.classList.add('active'); document.querySelectorAll('.left-tab-panel').forEach(panel => panel.classList.add('hidden')); document.getElementById(`left-tab-${tab.dataset.leftTab}`).classList.remove('hidden'); }); });
+            
+            document.querySelectorAll('[data-right-tab]').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('[data-right-tab]').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelectorAll('.right-tab-panel').forEach(panel => panel.classList.add('hidden'));
+                    document.getElementById(`${tab.dataset.rightTab}-panel-container`).classList.remove('hidden');
+                });
+            });
+
+            globalControls.timelineZoom.addEventListener('input', (e) => {
+                globalState.pixelsPerSecond = parseInt(e.target.value, 10);
+                renderTimeline();
+                renderRuler();
+                updateTimelineUI();
+            });
+
+            globalControls.viewerBgColor.addEventListener('input', (e) => {
+                document.getElementById('viewer-panel').style.backgroundColor = e.target.value;
+            });
+
+            document.body.addEventListener('click', (e) => {
+                if(e.target.closest('#toggle-subtitle-visibility-btn')) {
+                    globalState.subtitlesVisible = !globalState.subtitlesVisible;
+                    const visibleIcon = document.getElementById('subtitle-visible-icon');
+                    const hiddenIcon = document.getElementById('subtitle-hidden-icon');
+                    if (visibleIcon && hiddenIcon) {
+                        visibleIcon.classList.toggle('hidden', !globalState.subtitlesVisible);
+                        hiddenIcon.classList.toggle('hidden', globalState.subtitlesVisible);
+                    }
+                    subtitleTrack.style.opacity = globalState.subtitlesVisible ? '1' : '0.5';
+                }
+            })
+
+
+            globalControls.startBtn.addEventListener('click', () => {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                previewState.isPlaying = false;
+                globalControls.playIcon.classList.remove('hidden');
+                globalControls.pauseIcon.classList.add('hidden');
+                recordedChunks = [];
+                globalControls.downloadSection.classList.add('hidden');
+                setupMediaRecorder();
+                mediaRecorder.start();
+                globalControls.startBtn.disabled = true;
+                globalControls.startBtnText.textContent = 'Recording...';
+                globalControls.recordingIndicator.classList.remove('hidden');
+                const recordStartTime = Date.now();
+                function recordLoop() {
+                    const elapsedTime = Date.now() - recordStartTime;
+                    previewState.time = elapsedTime; // Update global time state
+                    if (elapsedTime >= globalState.totalDuration) { 
+                        draw(elapsedTime); 
+                        if (mediaRecorder.state === 'recording') mediaRecorder.stop(); 
+                        return; 
+                    }
+                    draw(elapsedTime);
+                    updateTimelineUI(); // Update playhead during recording
+                    requestAnimationFrame(recordLoop);
+                }
+                recordLoop();
+            });
+
+            const setCanvasResolution = (width, height) => {
+                canvas.width = width; canvas.height = height;
+                updateControlsUI(); 
+            };
+
+            function handleScrub(e) {
+                const rect = timelineRuler.getBoundingClientRect();
+                const scrollLeft = timelineScrollContainer.scrollLeft;
+                const clickX = e.clientX - rect.left + scrollLeft;
+                const newTime = (clickX / globalState.pixelsPerSecond) * 1000;
+                previewState.time = Math.max(0, Math.min(newTime, globalState.totalDuration));
+                if (!previewState.isPlaying) { draw(previewState.time); updateTimelineUI(); }
+            }
+
+            // --- Initial Kick-off ---
+            function initialize() {
+                loadAllPresets();
+                setCanvasResolution(1280, 720);
+                addElement();
+                handleSelection(textElements[0].id, 'clip', false, false);
+                renderRuler();
+                startPreviewAnimation();
+                document.getElementById('viewer-panel').style.backgroundColor = globalControls.viewerBgColor.value;
+
+                const exportFormatSelect = document.getElementById('export-format');
+                Array.from(exportFormatSelect.options).forEach(option => {
+                    if (option.value && !MediaRecorder.isTypeSupported(option.value)) {
+                        option.disabled = true;
+                        option.textContent += ' (Unsupported)';
+                    }
+                });
+            }
+
+            initialize();
+        });
+    </script>
+</body>
+</html>
+

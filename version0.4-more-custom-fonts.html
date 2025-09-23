@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Animation Video Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Lobster&family=Roboto+Mono&family=Pacifico&family=Poppins:wght@700&family=Playfair+Display:wght@700&family=Bangers&family=Oswald:wght@700&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .disabled-button {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .recording-indicator {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+        /* Custom font previews in dropdown */
+        #font-family-select option.font-lobster { font-family: 'Lobster', cursive; }
+        #font-family-select option.font-poppins { font-family: 'Poppins', sans-serif; font-weight: 700; }
+        #font-family-select option.font-roboto-mono { font-family: 'Roboto Mono', monospace; }
+        #font-family-select option.font-pacifico { font-family: 'Pacifico', cursive; }
+        #font-family-select option.font-inter { font-family: 'Inter', sans-serif; font-weight: 700; }
+        #font-family-select option.font-playfair { font-family: 'Playfair Display', serif; font-weight: 700; }
+        #font-family-select option.font-bangers { font-family: 'Bangers', cursive; }
+        #font-family-select option.font-oswald { font-family: 'Oswald', sans-serif; font-weight: 700; }
+        #font-family-select option.font-merriweather { font-family: 'Merriweather', serif; font-weight: 700; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">Enhanced Text Animation Editor</h1>
+            <p class="text-lg text-gray-600 mt-2">Create custom text animations with new styles and fonts, then export as a 720p video file.</p>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-8">
+
+            <!-- ==== CONTROLS PANEL ==== -->
+            <div class="w-full lg:w-1/3 bg-white p-6 rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 border-b pb-3">Controls</h2>
+                
+                <!-- Text Style -->
+                <section>
+                    <h3 class="text-xl font-semibold mb-4">Text Style</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="text-input" class="block text-sm font-medium text-gray-700 mb-1">Text Content</label>
+                            <input type="text" id="text-input" value="Hello World" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        </div>
+                        <div>
+                            <label for="font-family-select" class="block text-sm font-medium text-gray-700 mb-1">Font Family</label>
+                            <select id="font-family-select" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                                <option value="Poppins" class="font-poppins">Poppins</option>
+                                <option value="Inter" class="font-inter" selected>Inter</option>
+                                <option value="Lobster" class="font-lobster">Lobster</option>
+                                <option value="Roboto Mono" class="font-roboto-mono">Roboto Mono</option>
+                                <option value="Pacifico" class="font-pacifico">Pacifico</option>
+                                <option value="Playfair Display" class="font-playfair">Playfair Display</option>
+                                <option value="Bangers" class="font-bangers">Bangers</option>
+                                <option value="Oswald" class="font-oswald">Oswald</option>
+                                <option value="Merriweather" class="font-merriweather">Merriweather</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="font-size" class="block text-sm font-medium text-gray-700 mb-1">Font Size (px)</label>
+                            <input type="number" id="font-size" value="100" min="10" max="400" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 transition">
+                        </div>
+                        <div>
+                            <label for="text-color" class="block text-sm font-medium text-gray-700 mb-1">Text Color</label>
+                            <input type="color" id="text-color" value="#FFFFFF" class="w-full h-10 p-1 bg-white border border-gray-300 rounded-lg cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="bg-color" class="block text-sm font-medium text-gray-700 mb-1">Background Color</label>
+                            <input type="color" id="bg-color" value="#3b82f6" class="w-full h-10 p-1 bg-white border border-gray-300 rounded-lg cursor-pointer">
+                        </div>
+                    </div>
+                </section>
+
+                 <!-- Text Border -->
+                <section class="mt-8 pt-6 border-t">
+                    <h3 class="text-xl font-semibold mb-4">Text Border</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="border-width" class="block text-sm font-medium text-gray-700 mb-1">Border Width (px)</label>
+                            <input type="range" id="border-width" min="0" max="25" value="2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="border-color" class="block text-sm font-medium text-gray-700 mb-1">Border Color</label>
+                            <input type="color" id="border-color" value="#000000" class="w-full h-10 p-1 bg-white border border-gray-300 rounded-lg cursor-pointer">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Animation Controls -->
+                <section class="mt-8 pt-6 border-t">
+                    <h3 class="text-xl font-semibold mb-4">Animation</h3>
+                     <div class="space-y-4">
+                        <div>
+                           <label for="animation-style" class="block text-sm font-medium text-gray-700 mb-1">Animation Style</label>
+                            <select id="animation-style" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500">
+                                <option value="fadeAndScale">Fade & Scale</option>
+                                <option value="slideIn">Slide In From Left</option>
+                                <option value="typewriter">Typewriter</option>
+                                <option value="pulse">Pulse</option>
+                                <option value="riseUp">Rise Up</option>
+                                <option value="dropIn">Drop In (Bounce)</option>
+                                <option value="rotateIn">Rotate In</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Drop Shadow Controls -->
+                <section class="mt-8 pt-6 border-t">
+                    <h3 class="text-xl font-semibold mb-4">Drop Shadow</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="shadow-x" class="block text-sm font-medium text-gray-700 mb-1">Horizontal Offset (X)</label>
+                            <input type="range" id="shadow-x" min="-100" max="100" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="shadow-y" class="block text-sm font-medium text-gray-700 mb-1">Vertical Offset (Y)</label>
+                            <input type="range" id="shadow-y" min="-100" max="100" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="shadow-blur" class="block text-sm font-medium text-gray-700 mb-1">Blur Radius</label>
+                            <input type="range" id="shadow-blur" min="0" max="50" value="10" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="shadow-color" class="block text-sm font-medium text-gray-700 mb-1">Shadow Color</label>
+                            <input type="color" id="shadow-color" value="#000000" class="w-full h-10 p-1 bg-white border border-gray-300 rounded-lg cursor-pointer">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Export Controls -->
+                 <section class="mt-8 pt-6 border-t">
+                    <h3 class="text-xl font-semibold mb-4">Export Video</h3>
+                    <div>
+                        <label for="duration-input" class="block text-sm font-medium text-gray-700 mb-1">Animation Duration (seconds)</label>
+                        <input type="number" id="duration-input" value="5" min="1" max="30" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 transition">
+                    </div>
+                     <div id="recording-controls" class="space-y-3 mt-4">
+                         <button id="start-btn" class="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-all shadow-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+                            Start Recording
+                        </button>
+                        <button id="stop-btn" class="w-full flex items-center justify-center gap-2 bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 transition-all shadow-md disabled-button" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                            Stop Recording
+                        </button>
+                        <p id="recording-duration-text" class="text-xs text-center text-gray-500">Record a 5-second clip.</p>
+                     </div>
+                     <div id="download-section" class="hidden mt-4 text-center">
+                        <p class="text-green-700 font-semibold">Recording complete!</p>
+                        <a id="download-link" class="mt-2 inline-block w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-all shadow-md">
+                            Download Video (.mp4)
+                        </a>
+                    </div>
+                 </section>
+            </div>
+
+            <!-- ==== PREVIEW PANEL ==== -->
+            <div class="w-full lg:w-2/3">
+                <div class="bg-white p-4 rounded-2xl shadow-lg aspect-w-16 aspect-h-9 relative">
+                    <div id="canvas-container" class="w-full h-full flex items-center justify-center overflow-hidden rounded-xl">
+                        <canvas id="animation-canvas" width="1280" height="720" class="w-full h-full object-contain"></canvas>
+                         <div id="recording-indicator" class="hidden absolute top-5 right-5 w-6 h-6 bg-red-500 rounded-full recording-indicator"></div>
+                    </div>
+                </div>
+                 <div class="text-center mt-4 text-gray-500 text-sm">
+                    <p>Preview Resolution: 1280x720 (720p)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const canvas = document.getElementById('animation-canvas');
+            const ctx = canvas.getContext('2d');
+            const allInputs = {
+                text: document.getElementById('text-input'),
+                fontFamily: document.getElementById('font-family-select'),
+                fontSize: document.getElementById('font-size'),
+                textColor: document.getElementById('text-color'),
+                bgColor: document.getElementById('bg-color'),
+                borderWidth: document.getElementById('border-width'),
+                borderColor: document.getElementById('border-color'),
+                animationStyle: document.getElementById('animation-style'),
+                shadowX: document.getElementById('shadow-x'),
+                shadowY: document.getElementById('shadow-y'),
+                shadowBlur: document.getElementById('shadow-blur'),
+                shadowColor: document.getElementById('shadow-color'),
+                duration: document.getElementById('duration-input'),
+            };
+            const startBtn = document.getElementById('start-btn');
+            const stopBtn = document.getElementById('stop-btn');
+            const downloadLink = document.getElementById('download-link');
+            const downloadSection = document.getElementById('download-section');
+            const recordingIndicator = document.getElementById('recording-indicator');
+            const recordingDurationText = document.getElementById('recording-duration-text');
+
+            // --- State ---
+            let animationFrameId;
+            let mediaRecorder;
+            let recordedChunks = [];
+            const state = {};
+
+            function updateState() {
+                state.text = allInputs.text.value;
+                state.fontFamily = allInputs.fontFamily.value;
+                state.fontSize = parseInt(allInputs.fontSize.value, 10);
+                state.textColor = allInputs.textColor.value;
+                state.bgColor = allInputs.bgColor.value;
+                state.borderWidth = parseInt(allInputs.borderWidth.value, 10);
+                state.borderColor = allInputs.borderColor.value;
+                state.animationStyle = allInputs.animationStyle.value;
+                state.shadowX = parseInt(allInputs.shadowX.value, 10);
+                state.shadowY = parseInt(allInputs.shadowY.value, 10);
+                state.shadowBlur = parseInt(allInputs.shadowBlur.value, 10);
+                state.shadowColor = allInputs.shadowColor.value;
+                state.duration = parseInt(allInputs.duration.value, 10) * 1000;
+                recordingDurationText.textContent = `Record a ${allInputs.duration.value}-second clip.`;
+                if (!animationFrameId) draw(0);
+            }
+
+            // --- Animation Drawing Functions ---
+            const drawBase = () => {
+                ctx.fillStyle = state.bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.font = `bold ${state.fontSize}px '${state.fontFamily}', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+            };
+            
+            const drawTextWithStyles = (textToDraw, x, y) => {
+                // Draw fill text with shadow
+                ctx.shadowOffsetX = state.shadowX;
+                ctx.shadowOffsetY = state.shadowY;
+                ctx.shadowBlur = state.shadowBlur;
+                ctx.shadowColor = state.shadowColor;
+                ctx.fillStyle = state.textColor;
+                ctx.fillText(textToDraw, x, y);
+
+                // Draw border on top, without shadow
+                if (state.borderWidth > 0) {
+                    ctx.shadowColor = 'rgba(0,0,0,0)';
+                    ctx.lineWidth = state.borderWidth;
+                    ctx.strokeStyle = state.borderColor;
+                    ctx.strokeText(textToDraw, x, y);
+                }
+            };
+
+            const animationStyles = {
+                fadeAndScale: (progress) => {
+                    ctx.save();
+                    const scale = 0.8 + progress * 0.2;
+                    const opacity = Math.sin(progress * Math.PI);
+                    ctx.globalAlpha = opacity;
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.scale(scale, scale);
+                    drawTextWithStyles(state.text, 0, 0);
+                    ctx.restore();
+                },
+                slideIn: (progress) => {
+                    ctx.save();
+                    const easedProgress = 1 - Math.pow(1 - progress, 3); // Ease-out
+                    const x = -canvas.width / 2 + (easedProgress * canvas.width);
+                    ctx.globalAlpha = Math.sin(progress * Math.PI);
+                    drawTextWithStyles(state.text, x, canvas.height / 2);
+                    ctx.restore();
+                },
+                typewriter: (progress) => {
+                    const len = Math.floor(state.text.length * progress);
+                    const displayedText = state.text.substring(0, len);
+                    drawTextWithStyles(displayedText, canvas.width / 2, canvas.height / 2);
+                },
+                pulse: (progress) => {
+                    ctx.save();
+                    const scale = 1 + Math.sin(progress * Math.PI * 2) * 0.1; // pulse in and out
+                    ctx.globalAlpha = 0.75 + Math.sin(progress * Math.PI * 2) * 0.25;
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.scale(scale, scale);
+                    drawTextWithStyles(state.text, 0, 0);
+                    ctx.restore();
+                },
+                riseUp: (progress) => {
+                    ctx.save();
+                    const easedProgress = 1 - Math.pow(1 - progress, 4); // Ease-out quint
+                    const y = canvas.height + 50 - (easedProgress * (canvas.height / 2 + 50));
+                    ctx.globalAlpha = Math.sin(progress * Math.PI);
+                    drawTextWithStyles(state.text, canvas.width / 2, y);
+                    ctx.restore();
+                },
+                dropIn: (progress) => {
+                    ctx.save();
+                    const n1 = 7.5625; const d1 = 2.75; let easedProgress;
+                    if (progress < 1 / d1) { easedProgress = n1 * progress * progress;
+                    } else if (progress < 2 / d1) { easedProgress = n1 * (progress -= 1.5 / d1) * progress + 0.75;
+                    } else if (progress < 2.5 / d1) { easedProgress = n1 * (progress -= 2.25 / d1) * progress + 0.9375;
+                    } else { easedProgress = n1 * (progress -= 2.625 / d1) * progress + 0.984375; }
+                    const y = easedProgress * canvas.height / 2;
+                    ctx.globalAlpha = progress < 0.1 ? progress * 10 : 1;
+                    drawTextWithStyles(state.text, canvas.width / 2, y);
+                    ctx.restore();
+                },
+                rotateIn: (progress) => {
+                    ctx.save();
+                    const angle = (1 - progress) * -Math.PI / 2;
+                    const scale = 0.5 + progress * 0.5;
+                    ctx.globalAlpha = progress;
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.scale(scale, scale);
+                    ctx.rotate(angle);
+                    drawTextWithStyles(state.text, 0, 0);
+                    ctx.restore();
+                }
+            };
+            
+            const draw = (time) => {
+                const progress = (time % state.duration) / state.duration;
+                drawBase();
+                animationStyles[state.animationStyle](progress);
+            };
+            
+            // --- Animation Loop ---
+            const animate = (startTime) => {
+                const currentTime = Date.now() - startTime;
+                draw(currentTime);
+                animationFrameId = requestAnimationFrame(() => animate(startTime));
+            };
+
+            const startAnimation = () => {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                animate(Date.now());
+            };
+            
+            // --- Media Recorder Logic ---
+            const setupMediaRecorder = () => {
+                const stream = canvas.captureStream(30);
+                const options = { mimeType: 'video/webm; codecs=vp9' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options.mimeType = 'video/webm; codecs=vp8';
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        options.mimeType = 'video/webm';
+                    }
+                }
+                mediaRecorder = new MediaRecorder(stream, options);
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+                    downloadLink.href = URL.createObjectURL(blob);
+                    downloadLink.download = `${state.text.replace(/\s+/g, '_').toLowerCase()}_animation.mp4`;
+                    downloadSection.classList.remove('hidden');
+                };
+            };
+            
+            startBtn.addEventListener('click', () => {
+                recordedChunks = [];
+                downloadSection.classList.add('hidden');
+                setupMediaRecorder();
+                mediaRecorder.start();
+                startBtn.disabled = true;
+                startBtn.classList.add('disabled-button');
+                stopBtn.disabled = false;
+                stopBtn.classList.remove('disabled-button');
+                recordingIndicator.classList.remove('hidden');
+                setTimeout(() => {
+                    if (mediaRecorder && mediaRecorder.state === 'recording') stopBtn.click();
+                }, state.duration);
+            });
+
+            stopBtn.addEventListener('click', () => {
+                if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+                startBtn.disabled = false;
+                startBtn.classList.remove('disabled-button');
+                stopBtn.disabled = true;
+                stopBtn.classList.add('disabled-button');
+                recordingIndicator.classList.add('hidden');
+            });
+
+            // --- Initial Kick-off ---
+            Object.values(allInputs).forEach(input => input.addEventListener('input', updateState));
+            updateState();
+            startAnimation();
+        });
+    </script>
+</body>
+</html>
+

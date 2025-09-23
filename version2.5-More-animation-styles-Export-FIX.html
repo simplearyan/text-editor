@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Text Animation Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lobster&family=Roboto+Mono&family=Pacifico&family=Poppins:wght@700&family=Playfair+Display:wght@700&family=Bangers&family=Oswald:wght@700&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .panel {
+            background-color: #2a2a2a;
+            border: 1px solid #3c3c3c;
+        }
+        .sub-panel {
+            background-color: #222222;
+        }
+        .header-gradient {
+            background: -webkit-linear-gradient(45deg, #38bdf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2a2a2a; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #777; }
+
+        /* Inputs and Buttons */
+        input[type="text"], input[type="number"], select, textarea {
+            background-color: #333;
+            border: 1px solid #4f4f4f;
+            color: #e0e0e0;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
+        }
+        
+        /* Tabs */
+        .tab-button {
+            color: #a0a0a0;
+            transition: all 0.2s;
+        }
+        .tab-button.active {
+            color: white;
+            background-color: #3c3c3c;
+        }
+        
+        /* Timeline */
+        #timeline-ruler {
+            background-image: linear-gradient(to right, #444 1px, transparent 1px);
+            background-size: 25px 100%; /* Minor ticks */
+        }
+        .timeline-clip {
+            cursor: grab;
+            border-left: 5px solid;
+            position: absolute;
+        }
+        .timeline-clip:active { cursor: grabbing; }
+        .clip-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            cursor: ew-resize;
+            z-index: 10;
+        }
+        .clip-handle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 20px;
+            background-color: rgba(255,255,255,0.5);
+            border-radius: 2px;
+        }
+        .clip-handle.left { left: 0; }
+        .clip-handle.right { right: 0; }
+        #timeline-panel {
+            cursor: pointer;
+        }
+        #animation-canvas {
+            cursor: grab;
+        }
+        #animation-canvas.grabbing {
+            cursor: grabbing;
+        }
+        
+        /* Font Previews */
+        select option { background-color: #333; color: #e0e0e0; }
+        #font-family-select option.font-lobster, #subtitle-font-family option.font-lobster { font-family: 'Lobster', cursive; }
+        #font-family-select option.font-poppins, #subtitle-font-family option.font-poppins { font-family: 'Poppins', sans-serif; font-weight: 700; }
+        #font-family-select option.font-roboto-mono, #subtitle-font-family option.font-roboto-mono { font-family: 'Roboto Mono', monospace; }
+        #font-family-select option.font-pacifico, #subtitle-font-family option.font-pacifico { font-family: 'Pacifico', cursive; }
+        #font-family-select option.font-inter, #subtitle-font-family option.font-inter { font-family: 'Inter', sans-serif; font-weight: 700; }
+        #font-family-select option.font-playfair, #subtitle-font-family option.font-playfair { font-family: 'Playfair Display', serif; font-weight: 700; }
+        #font-family-select option.font-bangers, #subtitle-font-family option.font-bangers { font-family: 'Bangers', cursive; }
+        #font-family-select option.font-oswald, #subtitle-font-family option.font-oswald { font-family: 'Oswald', sans-serif; font-weight: 700; }
+        #font-family-select option.font-merriweather, #subtitle-font-family option.font-merriweather { font-family: 'Merriweather', serif; font-weight: 700; }
+
+        /* Modal */
+        #modal-backdrop {
+            background-color: rgba(0,0,0,0.7);
+            z-index: 999;
+        }
+        #modal-content {
+            background-color: #2a2a2a;
+            transform: translateY(-20px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        #modal-backdrop:not(.hidden) #modal-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col p-2 md:p-4 gap-4">
+
+    <header class="text-center flex-shrink-0">
+        <h1 class="text-3xl font-bold header-gradient">Pro Text Animation Editor</h1>
+    </header>
+
+    <div class="flex-grow flex flex-col md:flex-row gap-4 overflow-hidden">
+        
+        <!-- Left Column -->
+        <div class="w-full md:w-1/4 flex flex-col gap-4">
+              <!-- Combined Clips/Export Panel -->
+            <div class="panel rounded-lg p-4 flex flex-col h-full overflow-hidden">
+                  <!-- Tabs -->
+                  <nav class="flex-shrink-0 flex space-x-1 rounded-md p-1 bg-gray-800/50 mb-4">
+                      <button data-left-tab="clips" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded active">Clips</button>
+                      <button data-left-tab="subtitles" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Subtitles</button>
+                      <button data-left-tab="export" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Export</button>
+                  </nav>
+
+                  <!-- Tab Content Area -->
+                  <div class="flex-grow overflow-hidden">
+                      <!-- Clips Panel Content -->
+                      <div id="left-tab-clips" class="left-tab-panel h-full flex flex-col">
+                          <div class="flex gap-2 mb-3 flex-shrink-0">
+                              <button id="add-layer-btn" title="Add New Clip" class="flex-1 flex items-center justify-center gap-2 bg-sky-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-sky-600 transition-all text-sm">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                              </button>
+                              <button id="duplicate-layer-btn" title="Duplicate Selected Clip(s)" class="flex-1 flex items-center justify-center gap-2 bg-gray-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-700 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                              </button>
+                               <button id="delete-layer-btn" title="Delete Selected Clip(s)" class="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                              </button>
+                          </div>
+                          <div id="layers-list" class="space-y-2 flex-grow overflow-y-auto pr-2"></div>
+                      </div>
+                      <!-- Subtitles Panel Content -->
+                       <div id="left-tab-subtitles" class="left-tab-panel hidden h-full flex flex-col">
+                            <div class="flex gap-2 mb-3 flex-shrink-0">
+                                <button id="add-subtitle-btn" title="Add New Subtitle" class="flex-1 flex items-center justify-center gap-2 bg-sky-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-sky-600 transition-all text-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    <span>Add</span>
+                                </button>
+                                <button id="import-srt-btn" title="Import SRT file" class="flex-1 flex items-center justify-center gap-2 bg-gray-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-700 transition-all text-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                    <span>Import</span>
+                                </button>
+                                <button id="delete-subtitle-btn" title="Delete Selected Subtitle" class="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-red-700 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                    <span>Delete</span>
+                                </button>
+                            </div>
+                            <div id="subtitles-list" class="space-y-2 flex-grow overflow-y-auto pr-2"></div>
+                        </div>
+                      <!-- Export Panel Content -->
+                      <div id="left-tab-export" class="left-tab-panel hidden h-full overflow-y-auto pr-2">
+                          <div class="space-y-4">
+                                <div>
+                                    <label for="output-filename" class="block text-sm font-medium text-gray-400 mb-1">Output Name</label>
+                                    <input type="text" id="output-filename" value="pro_animation" class="w-full rounded-md p-2 text-sm">
+                                </div>
+                                <div>
+                                    <label for="export-resolution" class="block text-sm font-medium text-gray-400 mb-1">Resolution</label>
+                                    <select id="export-resolution" class="w-full rounded-md p-2 text-sm">
+                                        <option value="640x360">360p (640x360)</option>
+                                        <option value="854x480">480p (854x480)</option>
+                                        <option value="1280x720" selected>720p (1280x720)</option>
+                                        <option value="1920x1080">1080p (1920x1080)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="bg-color" class="block text-sm font-medium text-gray-400 mb-1">Background</label>
+                                    <input type="color" id="bg-color" value="#1a1a1a" class="w-full h-9 p-1 rounded-md cursor-pointer">
+                                </div>
+                                <div>
+                                    <label for="total-duration-input" class="block text-sm font-medium text-gray-400 mb-1">Timeline Duration (s)</label>
+                                    <input type="number" id="total-duration-input" value="5" min="1" max="300" class="w-full rounded-md p-2 text-sm">
+                                </div>
+                                <div id="recording-controls" class="space-y-3 pt-3 border-t border-gray-600">
+                                     <button id="start-btn" class="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-bold py-2 px-4 rounded-md hover:bg-green-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <svg id="start-btn-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2zm0 15c-2.76 0-5-2.24-5-5s2.24-5 5-5s5 2.24 5 5s-2.24 5-5 5z"/><path fill="currentColor" d="M12 9.5c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5s-1.12-2.5-2.5-2.5z"/></svg>
+                                        <span id="start-btn-text">Record</span>
+                                    </button>
+                                </div>
+                                <div id="download-section" class="hidden text-center">
+                                    <a id="download-link" class="mt-2 inline-block w-full bg-sky-500 text-white font-bold py-2 px-4 rounded-md hover:bg-sky-600 transition-all">
+                                        Download Video
+                                    </a>
+                                </div>
+                          </div>
+                      </div>
+                  </div>
+            </div>
+        </div>
+
+
+        <!-- Center Column -->
+        <div class="w-full md:w-1/2 flex flex-col gap-4">
+            <!-- Viewer -->
+            <div id="viewer-panel" class="panel rounded-lg p-2 flex-grow flex items-center justify-center">
+                 <div class="w-full h-full relative">
+                    <canvas id="animation-canvas" class="w-full h-full object-contain"></canvas>
+                    <div id="recording-indicator" class="hidden absolute top-3 right-3 w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
+                </div>
+            </div>
+            <!-- Timeline Controls -->
+             <div id="timeline-controls" class="panel rounded-lg p-3 flex-shrink-0 flex flex-col gap-2">
+                <div class="flex items-center justify-center gap-4">
+                    <button id="preview-play-pause-btn" class="flex items-center justify-center w-10 h-10 bg-gray-600 text-white font-bold rounded-md hover:bg-gray-700 transition-all focus:outline-none">
+                        <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                        <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="hidden"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    </button>
+                    <div class="text-gray-300 font-mono text-lg bg-gray-800/50 px-4 py-1 rounded-md">
+                        <span id="current-time-display">0.0</span> / <span id="total-time-display">5.0</span>s
+                    </div>
+                </div>
+                <div class="w-full flex items-center gap-2 px-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                     <input type="range" id="timeline-zoom" min="20" max="500" value="100" class="w-full">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column (Inspector) -->
+        <div class="w-full md:w-1/4">
+            <div id="inspector-panel" class="panel rounded-lg p-4 h-full overflow-y-auto">
+                 <h2 class="text-lg font-bold mb-3 border-b border-gray-600 pb-2">Inspector</h2>
+                 
+                 <div id="inspector-content">
+                    <!-- This content will be dynamically replaced -->
+                 </div>
+
+                 <div id="inspector-placeholder" class="text-center text-gray-500 py-20">
+                     <p>Select a clip or subtitle to edit its properties.</p>
+                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Timeline -->
+    <div id="timeline-panel" class="panel rounded-lg p-2 flex-shrink-0 h-48 flex flex-col">
+        <div class="w-full overflow-x-auto" id="timeline-scroll-container">
+            <div id="timeline-ruler" class="h-6 w-full relative flex-shrink-0">
+                 <div id="playhead" class="absolute top-0 h-full w-0.5 bg-sky-400 z-20 pointer-events-none"></div>
+            </div>
+        </div>
+        <div id="timeline-tracks-container" class="flex-grow overflow-auto relative">
+             <div class="absolute top-0 left-0 p-1 flex items-center gap-2 z-20 bg-[#2a2a2a]/80 rounded-br-md">
+                 <span class="text-xs font-bold text-emerald-400">SUBTITLES</span>
+                 <button id="toggle-subtitle-visibility-btn" title="Toggle Subtitle Track Visibility" class="text-gray-300 hover:text-white">
+                    <svg class="w-5 h-5" id="subtitle-visible-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    <svg class="w-5 h-5 hidden" id="subtitle-hidden-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                 </button>
+            </div>
+            <div id="main-tracks" class="relative"></div>
+            <div id="subtitle-track" class="relative pt-2 border-t border-dashed border-gray-600 mt-2"></div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 flex items-center justify-center p-4">
+        <div id="modal-content" class="w-full max-w-sm rounded-lg p-6 shadow-xl opacity-0">
+            <h3 id="modal-title" class="text-lg font-bold mb-4">Modal Title</h3>
+            <div id="modal-body" class="space-y-4">
+                <p id="modal-text"></p>
+                <input type="text" id="modal-input" class="w-full rounded-md p-2 text-sm">
+            </div>
+            <div id="modal-footer" class="flex justify-end gap-3 mt-6">
+                <button id="modal-cancel-btn" class="py-2 px-4 rounded-md bg-gray-600 hover:bg-gray-700 transition-colors">Cancel</button>
+                <button id="modal-confirm-btn" class="py-2 px-4 rounded-md bg-sky-500 hover:bg-sky-600 transition-colors text-white font-semibold">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Inspector Templates -->
+    <template id="clip-inspector-template">
+         <!-- Preset Controls -->
+         <div class="mb-4 border-b border-gray-600 pb-4">
+             <label for="preset-select" class="block text-sm font-semibold text-gray-400 mb-2">Presets</label>
+             <div class="flex gap-2">
+                 <select id="preset-select" class="flex-grow rounded-md p-2 text-sm"><option value="">Apply a Preset...</option></select>
+                 <button id="save-preset-btn" title="Save current settings as a new preset" class="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-sky-500 text-white rounded-md hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                 </button>
+                 <button id="delete-preset-btn" title="Delete selected preset" class="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                 </button>
+             </div>
+         </div>
+         <nav class="flex space-x-1 rounded-md p-1 bg-gray-800/50 mb-4">
+             <button data-tab="style" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded active">Style</button>
+             <button data-tab="transform" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Transform</button>
+             <button data-tab="animation" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Animation</button>
+             <button data-tab="effects" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Effects</button>
+         </nav>
+         <div class="space-y-4 text-sm">
+             <section data-tab-content="style" class="space-y-3">
+                  <textarea id="text-input" class="w-full rounded-md p-2" placeholder="Text Content" rows="3"></textarea>
+                  <select id="font-family-select" class="w-full rounded-md p-2"></select>
+                  <div class="grid grid-cols-2 gap-2">
+                      <input type="number" id="font-size" min="1" class="w-full rounded-md p-2" placeholder="Size">
+                      <input type="color" id="text-color" class="w-full h-10 p-1 rounded-md cursor-pointer">
+                  </div>
+                  <div class="pt-2 border-t border-gray-600 space-y-3">
+                      <label class="font-semibold text-gray-400">Border</label>
+                      <div class="grid grid-cols-2 gap-2">
+                          <input type="range" id="border-width" min="0" max="25" class="w-full self-center">
+                          <input type="color" id="border-color" class="w-full h-10 p-1 rounded-md cursor-pointer">
+                      </div>
+                  </div>
+                  <div class="pt-2 border-t border-gray-600 space-y-3">
+                    <label class="font-semibold text-gray-400">Text Wrap</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="text-wrap-mode" class="w-full rounded-md p-2 text-xs">
+                            <option value="auto">Auto</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                        <input type="number" id="text-width" min="10" class="w-full rounded-md p-2" placeholder="Width (px)">
+                    </div>
+                </div>
+             </section>
+             <section data-tab-content="transform" class="hidden space-y-3">
+                  <div class="grid grid-cols-2 gap-2">
+                      <input type="number" id="position-x" class="w-full rounded-md p-2" placeholder="X Pos">
+                      <input type="number" id="position-y" class="w-full rounded-md p-2" placeholder="Y Pos">
+                  </div>
+                  <div class="flex items-center gap-2">
+                      <input type="range" id="rotation" min="-180" max="180" class="w-full">
+                      <input type="number" id="rotation-input" min="-180" max="180" class="w-20 rounded-md p-2 text-center">
+                  </div>
+             </section>
+              <section data-tab-content="animation" class="hidden space-y-3">
+                  <input type="number" id="start-time" min="0" step="0.1" class="w-full rounded-md p-2" placeholder="Start Time (s)">
+                  <div class="grid grid-cols-2 gap-2">
+                     <select id="animation-style" class="w-full rounded-md p-2" title="In-Animation Style"></select>
+                     <select id="animation-easing" class="w-full rounded-md p-2" title="In-Animation Easing"></select>
+                  </div>
+                  <input type="number" id="animation-duration" min="0.1" step="0.1" class="w-full rounded-md p-2" placeholder="In-Animation Duration (s)">
+                  <input type="number" id="stay-duration" min="0" step="0.1" class="w-full rounded-md p-2" placeholder="Stay Duration (s)">
+                  <div class="grid grid-cols-2 gap-2">
+                     <select id="out-animation-style" class="w-full rounded-md p-2" title="Out-Animation Style"></select>
+                     <select id="out-animation-easing" class="w-full rounded-md p-2" title="Out-Animation Easing"></select>
+                  </div>
+                  <input type="number" id="out-animation-duration" min="0.1" step="0.1" class="w-full rounded-md p-2" placeholder="Out-Animation Duration (s)">
+              </section>
+             <section data-tab-content="effects" class="hidden space-y-3">
+                  <label class="font-semibold text-gray-400">Drop Shadow</label>
+                 <input type="range" id="shadow-x" min="-100" max="100" title="Shadow X">
+                 <input type="range" id="shadow-y" min="-100" max="100" title="Shadow Y">
+                 <input type="range" id="shadow-blur" min="0" max="50" title="Shadow Blur">
+                 <input type="color" id="shadow-color" class="w-full h-10 p-1 rounded-md cursor-pointer">
+             </section>
+         </div>
+    </template>
+
+    <template id="subtitle-inspector-template">
+         <div class="mb-4 border-b border-gray-600 pb-4">
+             <label for="subtitle-preset-select" class="block text-sm font-semibold text-gray-400 mb-2">Subtitle Presets</label>
+             <div class="flex gap-2">
+                 <select id="subtitle-preset-select" class="flex-grow rounded-md p-2 text-sm"><option value="">Apply a Preset...</option></select>
+                 <button id="subtitle-save-preset-btn" title="Save current settings as a new preset" class="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-sky-500 text-white rounded-md hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                 </button>
+                 <button id="subtitle-delete-preset-btn" title="Delete selected preset" class="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                 </button>
+             </div>
+         </div>
+        <div id="subtitle-inspector-main-content">
+            <div class="space-y-4 text-sm">
+                <div class="space-y-2">
+                    <label class="font-semibold text-gray-400">Timing (s)</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="subtitle-start-time" min="0" step="0.1" class="w-full rounded-md p-2" placeholder="Start">
+                        <input type="number" id="subtitle-end-time" min="0" step="0.1" class="w-full rounded-md p-2" placeholder="End">
+                    </div>
+                </div>
+                 <textarea id="subtitle-text" class="w-full rounded-md p-2" placeholder="Subtitle Content" rows="3"></textarea>
+            </div>
+            <nav class="flex space-x-1 rounded-md p-1 bg-gray-800/50 my-4">
+                 <button data-tab="style" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded active">Style</button>
+                 <button data-tab="transform" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Transform</button>
+                 <button data-tab="animation" class="tab-button w-full py-1.5 px-3 text-sm font-semibold rounded">Animation</button>
+            </nav>
+            <div class="space-y-4 text-sm">
+                 <section data-tab-content="style" class="space-y-3">
+                    <select id="subtitle-font-family" class="w-full rounded-md p-2"></select>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="subtitle-font-size" min="1" class="w-full rounded-md p-2" placeholder="Size">
+                        <input type="color" id="subtitle-text-color" class="w-full h-10 p-1 rounded-md cursor-pointer">
+                    </div>
+                     <div class="pt-2 border-t border-gray-600 space-y-3">
+                        <label class="font-semibold text-gray-400">Text Wrap</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="subtitle-wrap-mode" class="w-full rounded-md p-2 text-xs">
+                                <option value="auto">Auto</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <input type="number" id="subtitle-width" min="10" class="w-full rounded-md p-2" placeholder="Width (px)">
+                        </div>
+                    </div>
+                    <div class="pt-2 border-t border-gray-600 space-y-3">
+                        <label class="font-semibold text-gray-400">Border</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="range" id="subtitle-border-width" min="0" max="15" class="w-full self-center">
+                            <input type="color" id="subtitle-border-color" class="w-full h-10 p-1 rounded-md cursor-pointer">
+                        </div>
+                    </div>
+                    <div class="pt-2 border-t border-gray-600 space-y-3">
+                        <div class="flex items-center justify-between">
+                             <label class="font-semibold text-gray-400">Background</label>
+                             <div class="flex items-center gap-2 text-xs">
+                                 <input type="checkbox" id="subtitle-bg-none" class="bg-gray-700 rounded-sm border-gray-500 text-sky-500 focus:ring-sky-500">
+                                 <label for="subtitle-bg-none">None</label>
+                             </div>
+                         </div>
+                         <input type="color" id="subtitle-bg-color" class="w-full h-10 p-1 rounded-md cursor-pointer">
+                    </div>
+                    <div class="pt-2 border-t border-gray-600 space-y-3">
+                        <label class="font-semibold text-gray-400">Drop Shadow</label>
+                        <input type="range" id="subtitle-shadow-x" min="-20" max="20" title="Shadow X">
+                        <input type="range" id="subtitle-shadow-y" min="-20" max="20" title="Shadow Y">
+                        <input type="range" id="subtitle-shadow-blur" min="0" max="30" title="Shadow Blur">
+                        <input type="color" id="subtitle-shadow-color" class="w-full h-10 p-1 rounded-md cursor-pointer">
+                    </div>
+                 </section>
+                 <section data-tab-content="transform" class="hidden space-y-3">
+                    <label class="font-semibold text-gray-400">Position</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="subtitle-position-x" class="w-full rounded-md p-2" placeholder="X Pos" step="1">
+                        <input type="number" id="subtitle-position-y" class="w-full rounded-md p-2" placeholder="Y Pos" step="1">
+                    </div>
+                 </section>
+                 <section data-tab-content="animation" class="hidden space-y-3">
+                    <label class="font-semibold text-gray-400">In-Animation</label>
+                    <select id="subtitle-in-animation" class="w-full rounded-md p-2"></select>
+                    <label class="font-semibold text-gray-400">Out-Animation</label>
+                    <select id="subtitle-out-animation" class="w-full rounded-md p-2"></select>
+                 </section>
+            </div>
+        </div>
+        <div id="subtitle-inspector-multi-select-placeholder" class="hidden text-center text-gray-500 py-10">
+             <p>Multiple subtitles selected. Apply a preset to edit them all at once.</p>
+        </div>
+    </template>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const canvas = document.getElementById('animation-canvas');
+            const ctx = canvas.getContext('2d');
+            const inspectorPanel = document.getElementById('inspector-panel');
+            const inspectorContent = document.getElementById('inspector-content');
+            const inspectorPlaceholder = document.getElementById('inspector-placeholder');
+            const timelineRuler = document.getElementById('timeline-ruler');
+            const mainTracks = document.getElementById('main-tracks');
+            const subtitleTrack = document.getElementById('subtitle-track');
+            const timelinePanel = document.getElementById('timeline-panel');
+            const timelineScrollContainer = document.getElementById('timeline-scroll-container');
+            const playhead = document.getElementById('playhead');
+
+            const clipInspectorTemplate = document.getElementById('clip-inspector-template');
+            const subtitleInspectorTemplate = document.getElementById('subtitle-inspector-template');
+
+            const globalControls = {
+                bgColor: document.getElementById('bg-color'),
+                addLayerBtn: document.getElementById('add-layer-btn'),
+                duplicateLayerBtn: document.getElementById('duplicate-layer-btn'),
+                deleteLayerBtn: document.getElementById('delete-layer-btn'),
+                layersList: document.getElementById('layers-list'),
+                addSubtitleBtn: document.getElementById('add-subtitle-btn'),
+                importSrtBtn: document.getElementById('import-srt-btn'),
+                deleteSubtitleBtn: document.getElementById('delete-subtitle-btn'),
+                subtitlesList: document.getElementById('subtitles-list'),
+                toggleSubtitleVisibilityBtn: document.getElementById('toggle-subtitle-visibility-btn'),
+                subtitleVisibleIcon: document.getElementById('subtitle-visible-icon'),
+                subtitleHiddenIcon: document.getElementById('subtitle-hidden-icon'),
+                totalDurationInput: document.getElementById('total-duration-input'),
+                outputFilename: document.getElementById('output-filename'),
+                exportResolution: document.getElementById('export-resolution'),
+                startBtn: document.getElementById('start-btn'),
+                startBtnText: document.getElementById('start-btn-text'),
+                startBtnIcon: document.getElementById('start-btn-icon'),
+                downloadLink: document.getElementById('download-link'),
+                downloadSection: document.getElementById('download-section'),
+                recordingIndicator: document.getElementById('recording-indicator'),
+                previewPlayPauseBtn: document.getElementById('preview-play-pause-btn'),
+                playIcon: document.getElementById('play-icon'),
+                pauseIcon: document.getElementById('pause-icon'),
+                currentTimeDisplay: document.getElementById('current-time-display'),
+                totalTimeDisplay: document.getElementById('total-time-display'),
+                timelineZoom: document.getElementById('timeline-zoom'),
+            };
+            
+            const modalElements = {
+                backdrop: document.getElementById('modal-backdrop'),
+                content: document.getElementById('modal-content'),
+                title: document.getElementById('modal-title'),
+                body: document.getElementById('modal-body'),
+                text: document.getElementById('modal-text'),
+                input: document.getElementById('modal-input'),
+                confirmBtn: document.getElementById('modal-confirm-btn'),
+                cancelBtn: document.getElementById('modal-cancel-btn'),
+            };
+
+            // --- State ---
+            let animationFrameId;
+            let mediaRecorder;
+            let recordedChunks = [];
+            let textElements = [];
+            let subtitleElements = [];
+            let selectedIds = [];
+            let selectionType = null; // 'clip' or 'subtitle'
+            let lastSelectedId = null; 
+            
+            let globalState = {
+                bgColor: '#1a1a1a',
+                totalDuration: 5000,
+                pixelsPerSecond: 100,
+                subtitlesVisible: true,
+            };
+            let previewState = {
+                isPlaying: true,
+                time: 0,
+                lastTimestamp: 0,
+            };
+            let presets = [];
+            let subtitlePresets = [];
+
+            // --- Populate Dynamic Selects ---
+            const fonts = ["Inter", "Poppins", "Lobster", "Roboto Mono", "Pacifico", "Playfair Display", "Bangers", "Oswald", "Merriweather"];
+            const inAnimations = { 
+                none: "None", 
+                fadeAndScale: "Fade & Scale In", 
+                slideIn: "Slide In From Left", 
+                typewriter: "Typewriter",
+                typewriterEnhanced: "Typewriter+",
+                fadeInWord: "Fade In (Word)",
+                bounceInWord: "Bounce In (Word)",
+                blurIn: "Blur In",
+                riseUp: "Rise Up", 
+                dropIn: "Drop In (Bounce)", 
+                rotateIn: "Rotate In" 
+            };
+            const outAnimations = { 
+                none: "None", 
+                fadeOut: "Fade Out", 
+                slideOut: "Slide Out To Right", 
+                scaleOut: "Scale Out",
+                zoomOut: "Zoom Out",
+                fall: "Fall"
+            };
+            const subtitleAnimations = { 
+                none: "None", 
+                fadeIn: "Fade In", 
+                slideUp: "Slide Up",
+                fadeInWord: "Fade In (Word)",
+            };
+            const easingFunctions = { linear: "Linear", easeInCubic: "Ease In", easeOutCubic: "Ease Out", easeInOutCubic: "Ease In-Out", easeOutBounce: "Bounce" };
+            const populateSelect = (selectEl, options) => {
+                if (!selectEl) return;
+                selectEl.innerHTML = '';
+                for(const [key, value] of Object.entries(options)) {
+                    selectEl.innerHTML += `<option value="${key}">${value}</option>`;
+                }
+            };
+            
+            // --- State Management & UI Sync ---
+            function updateControlsUI() {
+                globalControls.deleteLayerBtn.disabled = selectionType !== 'clip' || selectedIds.length === 0;
+                globalControls.duplicateLayerBtn.disabled = selectionType !== 'clip' || selectedIds.length === 0;
+                globalControls.deleteSubtitleBtn.disabled = selectionType !== 'subtitle' || selectedIds.length === 0;
+
+                if (selectedIds.length === 0) {
+                    inspectorContent.innerHTML = '';
+                    inspectorPlaceholder.classList.remove('hidden');
+                    inspectorPlaceholder.innerHTML = '<p>Select a clip or subtitle to edit its properties.</p>';
+                } else {
+                    inspectorPlaceholder.classList.add('hidden');
+                    if (selectionType === 'clip') {
+                         if(selectedIds.length === 1) {
+                            const el = textElements.find(e => e.id === selectedIds[0]);
+                            if(el) renderClipInspector(el);
+                         } else {
+                            // FUTURE: Multi-select inspector for clips
+                            inspectorContent.innerHTML = '';
+                            inspectorPlaceholder.classList.remove('hidden');
+                            inspectorPlaceholder.innerHTML = `<p>${selectedIds.length} clips selected.</p>`;
+                         }
+                    } else if (selectionType === 'subtitle') {
+                         renderSubtitleInspector();
+                    }
+                }
+                renderLayersList();
+                renderSubtitlesList();
+            }
+
+            function renderLayersList() {
+                globalControls.layersList.innerHTML = '';
+                 textElements.forEach((el) => {
+                    const isSelected = selectionType === 'clip' && selectedIds.includes(el.id);
+                    const itemWrapper = document.createElement('div');
+                    itemWrapper.className = `border rounded-md transition-all duration-200 ${isSelected ? 'bg-sky-800/30 border-sky-500' : 'border-gray-600'}`;
+                    itemWrapper.innerHTML = `<div class="p-2 flex items-center gap-3 text-sm cursor-pointer">
+                        <div class="w-3 h-3 rounded-sm flex-shrink-0" style="background-color:${el.textColor}"></div>
+                        <span class="flex-grow truncate">${el.text.split('\n')[0] || 'Untitled'}</span>
+                    </div>`;
+                    itemWrapper.addEventListener('click', (e) => handleSelection(el.id, 'clip', e.metaKey || e.ctrlKey, e.shiftKey));
+                    globalControls.layersList.appendChild(itemWrapper);
+                });
+            }
+
+            function renderSubtitlesList() {
+                globalControls.subtitlesList.innerHTML = '';
+                const sortedSubs = [...subtitleElements].sort((a,b) => a.startTime - b.startTime);
+                sortedSubs.forEach(sub => {
+                    const isSelected = selectionType === 'subtitle' && selectedIds.includes(sub.id);
+                    const itemWrapper = document.createElement('div');
+                    itemWrapper.className = `border rounded-md transition-all duration-200 ${isSelected ? 'bg-emerald-800/30 border-emerald-500' : 'border-gray-600'}`;
+                    itemWrapper.innerHTML = `<div class="p-2 flex items-center gap-3 text-sm cursor-pointer">
+                        <span class="flex-grow truncate">${sub.text.split('\n')[0] || 'Untitled'}</span>
+                    </div>`;
+                     itemWrapper.addEventListener('click', (e) => handleSelection(sub.id, 'subtitle', e.metaKey || e.ctrlKey, e.shiftKey));
+                    globalControls.subtitlesList.appendChild(itemWrapper);
+                });
+            }
+
+            function addElement() {
+                const newElement = {
+                    id: Date.now(), text: `Clip ${textElements.length + 1}`, fontFamily: 'Poppins', fontSize: 100, textColor: '#FFFFFF',
+                    relativeX: 0.5, relativeY: 0.5, rotation: 0, borderWidth: 0, borderColor: '#000000',
+                    startTime: previewState.time, animationStyle: 'fadeAndScale', animationEasing: 'easeOutCubic', animationDuration: 500,
+                    stayDuration: 2000, outAnimationStyle: 'fadeOut', outAnimationEasing: 'easeInCubic', outAnimationDuration: 500,
+                    shadowX: 0, shadowY: 0, shadowBlur: 0, shadowColor: '#000000',
+                    wrapMode: 'auto', width: canvas.width * 0.9,
+                };
+                textElements.push(newElement);
+                handleSelection(newElement.id, 'clip', false, false);
+                renderTimeline();
+            }
+
+            function deleteElement() {
+                if (selectionType !== 'clip' || selectedIds.length === 0) return;
+                showConfirmModal('Delete Clips?', `Are you sure you want to delete ${selectedIds.length} clip(s)?`, (confirmed) => {
+                    if(confirmed) {
+                        textElements = textElements.filter(el => !selectedIds.includes(el.id));
+                        handleSelection(null, null, false, false);
+                        renderTimeline();
+                    }
+                });
+            }
+
+            function addSubtitleElement() {
+                const newSub = {
+                    id: Date.now(), text: 'New Subtitle', startTime: previewState.time, endTime: previewState.time + 3000,
+                    fontFamily: 'Inter', fontSize: 48, textColor: '#FFFFFF', borderWidth: 2, borderColor: '#000000',
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', relativeX: 0.5, relativeY: 0.95,
+                    shadowX: 0, shadowY: 2, shadowBlur: 4, shadowColor: '#000000',
+                    inAnimation: 'fadeIn', outAnimation: 'fadeIn',
+                    wrapMode: 'auto', width: canvas.width * 0.95,
+                };
+                subtitleElements.push(newSub);
+                handleSelection(newSub.id, 'subtitle', false, false);
+                renderTimeline();
+            }
+
+            function deleteSubtitleElement() {
+                 if (selectionType !== 'subtitle' || selectedIds.length === 0) return;
+                 showConfirmModal('Delete Subtitles?', `Are you sure you want to delete ${selectedIds.length} subtitle(s)?`, (confirmed) => {
+                    if (confirmed) {
+                        subtitleElements = subtitleElements.filter(s => !selectedIds.includes(s.id));
+                        handleSelection(null, null, false, false);
+                        renderTimeline();
+                    }
+                });
+            }
+            
+            function handleSelection(clickedId, clickedType, isCtrl, isShift) {
+                const sourceArray = clickedType === 'clip' ? textElements : [...subtitleElements].sort((a,b) => a.startTime - b.startTime);
+
+                if(clickedType !== selectionType) {
+                    selectedIds = [clickedId];
+                    selectionType = clickedType;
+                    lastSelectedId = clickedId;
+                } else {
+                    if (isShift && lastSelectedId) {
+                        const lastIndex = sourceArray.findIndex(el => el.id === lastSelectedId);
+                        const clickedIndex = sourceArray.findIndex(el => el.id === clickedId);
+                        if (lastIndex === -1 || clickedIndex === -1) { // Safety check
+                             selectedIds = [clickedId];
+                        } else {
+                            const start = Math.min(lastIndex, clickedIndex);
+                            const end = Math.max(lastIndex, clickedIndex);
+                            const rangeIds = sourceArray.slice(start, end + 1).map(el => el.id);
+                            if(isCtrl) {
+                                selectedIds = [...new Set([...selectedIds, ...rangeIds])];
+                            } else {
+                                selectedIds = rangeIds;
+                            }
+                        }
+                    } else if (isCtrl) {
+                        const indexInSelection = selectedIds.indexOf(clickedId);
+                        if (indexInSelection > -1) {
+                            selectedIds.splice(indexInSelection, 1);
+                        } else {
+                            selectedIds.push(clickedId);
+                        }
+                        lastSelectedId = clickedId;
+                    } else {
+                        if (selectedIds.includes(clickedId) && selectedIds.length === 1) {
+                            selectedIds = [];
+                            lastSelectedId = null;
+                            selectionType = null;
+                        } else {
+                            selectedIds = [clickedId];
+                            lastSelectedId = clickedId;
+                        }
+                    }
+                }
+                 if(selectedIds.length === 0) selectionType = null;
+
+                updateControlsUI();
+                renderTimeline();
+            }
+
+            // --- Timeline Rendering and Interaction ---
+            function renderRuler() {
+                timelineRuler.innerHTML = ''; // Clear previous ruler
+                const duration = globalState.totalDuration / 1000;
+                const totalWidth = duration * globalState.pixelsPerSecond;
+                timelineRuler.style.width = `${totalWidth}px`;
+                for(let i = 0; i <= duration; i++) {
+                    const mark = document.createElement('div');
+                    mark.className = 'absolute top-0 h-full flex items-end text-xs text-gray-500 pointer-events-none';
+                    mark.style.left = `${i * globalState.pixelsPerSecond}px`;
+                    mark.innerHTML = `<span class="transform -translate-x-1/2">${i}s</span>`;
+                    const tick = document.createElement('div');
+                    tick.className = 'absolute top-0 h-2 w-px bg-gray-500 pointer-events-none';
+                    tick.style.left = `${i * globalState.pixelsPerSecond}px`;
+                    timelineRuler.appendChild(mark);
+                    timelineRuler.appendChild(tick);
+                }
+                timelineRuler.appendChild(playhead);
+            }
+            
+            function createClipDOM(element, options) {
+                const clip = document.createElement('div');
+                const isSelected = selectionType === options.type && selectedIds.includes(element.id);
+                clip.className = `timeline-clip h-10 rounded-md flex items-center px-2 text-sm truncate ${isSelected ? options.selectedClass : options.baseClass}`;
+                clip.style.left = `${options.left}px`;
+                clip.style.width = `${Math.max(20, options.width)}px`;
+                clip.style.top = `${options.top}px`;
+                clip.style.borderColor = options.borderColor;
+                clip.textContent = element.text.split('\n')[0];
+                
+                // Drag body
+                clip.addEventListener('mousedown', (e) => { 
+                    e.stopPropagation(); 
+                    if (e.target.classList.contains('clip-handle')) return; 
+
+                    const wasSelected = selectedIds.includes(element.id);
+                    if (!wasSelected) {
+                        handleSelection(element.id, options.type, e.metaKey || e.ctrlKey, e.shiftKey);
+                    }
+                    
+                    const startX = e.clientX;
+                    const initialStartTimes = new Map(selectedIds.map(id => [id, (options.type === 'clip' ? textElements : subtitleElements).find(el => el.id === id).startTime]));
+                    const initialEndTimes = options.type === 'subtitle' ? new Map(selectedIds.map(id => [id, subtitleElements.find(el => el.id === id).endTime])) : null;
+
+                    const onMouseMove = (moveEvent) => {
+                        const deltaX = moveEvent.clientX - startX;
+                        const deltaTime = (deltaX / globalState.pixelsPerSecond) * 1000;
+                        
+                        selectedIds.forEach(id => {
+                            const el = (options.type === 'clip' ? textElements : subtitleElements).find(item => item.id === id);
+                            const initialStartTime = initialStartTimes.get(id);
+                            const newStartTime = Math.max(0, initialStartTime + deltaTime);
+                            if(options.type === 'subtitle') {
+                                const initialEndTime = initialEndTimes.get(id);
+                                const duration = initialEndTime - initialStartTime;
+                                el.startTime = newStartTime;
+                                el.endTime = newStartTime + duration;
+                            } else {
+                                 el.startTime = newStartTime;
+                            }
+                        });
+                        
+                        updateControlsUI();
+                        renderTimeline();
+                    };
+
+                    const onMouseUp = () => window.removeEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp, { once: true });
+                });
+
+                // Handles
+                const leftHandle = document.createElement('div');
+                leftHandle.className = 'clip-handle left';
+                clip.appendChild(leftHandle);
+                leftHandle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    const startX = e.clientX;
+                    const initialStartTime = element.startTime;
+                    const initialEndTime = element.endTime;
+                    const initialStayDuration = element.stayDuration;
+
+                    const onMouseMove = (moveEvent) => {
+                       const deltaX = moveEvent.clientX - startX;
+                       const deltaTime = (deltaX / globalState.pixelsPerSecond) * 1000;
+                       const newStart = Math.max(0, initialStartTime + deltaTime);
+                       
+                       if(options.type === 'subtitle') {
+                           element.startTime = Math.min(newStart, initialEndTime - 100);
+                       } else {
+                           const newStay = Math.max(100, initialStayDuration - (newStart - initialStartTime));
+                           element.startTime = newStart;
+                           element.stayDuration = newStay;
+                       }
+                       updateControlsUI();
+                       renderTimeline();
+                    };
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', () => window.removeEventListener('mousemove', onMouseMove), { once: true });
+                });
+
+                const rightHandle = document.createElement('div');
+                rightHandle.className = 'clip-handle right';
+                clip.appendChild(rightHandle);
+                rightHandle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    const startX = e.clientX;
+                    const initialEndTime = element.endTime;
+                    const initialStayDuration = element.stayDuration;
+
+                    const onMouseMove = (moveEvent) => {
+                       const deltaX = moveEvent.clientX - startX;
+                       const deltaTime = (deltaX / globalState.pixelsPerSecond) * 1000;
+
+                       if(options.type === 'subtitle') {
+                           element.endTime = Math.max(element.startTime + 100, initialEndTime + deltaTime);
+                       } else {
+                           element.stayDuration = Math.max(100, initialStayDuration + deltaTime);
+                       }
+                       updateControlsUI();
+                       renderTimeline();
+                    };
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', () => window.removeEventListener('mousemove', onMouseMove), { once: true });
+                });
+
+                return clip;
+            }
+
+            function renderTimeline() {
+                const totalWidth = globalState.totalDuration / 1000 * globalState.pixelsPerSecond;
+                mainTracks.innerHTML = '';
+                mainTracks.style.width = `${totalWidth}px`;
+                mainTracks.style.height = `${textElements.length * 48}px`;
+
+                textElements.forEach((el, index) => {
+                    const clipDuration = el.animationDuration + el.stayDuration + el.outAnimationDuration;
+                    const clip = createClipDOM(el, {
+                        type: 'clip',
+                        left: el.startTime / 1000 * globalState.pixelsPerSecond,
+                        width: clipDuration / 1000 * globalState.pixelsPerSecond,
+                        top: index * 48,
+                        borderColor: el.textColor,
+                        baseClass: 'bg-gray-600',
+                        selectedClass: 'bg-sky-700 ring-2 ring-sky-400 z-10'
+                    });
+                    mainTracks.appendChild(clip);
+                });
+
+                subtitleTrack.innerHTML = '';
+                subtitleTrack.style.width = `${totalWidth}px`;
+                subtitleTrack.style.height = subtitleElements.length > 0 ? `48px` : '0px';
+                subtitleTrack.style.display = subtitleElements.length > 0 ? 'block' : 'none';
+
+                subtitleElements.forEach((sub) => {
+                    const clipDuration = sub.endTime - sub.startTime;
+                    const clip = createClipDOM(sub, {
+                        type: 'subtitle',
+                        left: sub.startTime / 1000 * globalState.pixelsPerSecond,
+                        width: clipDuration / 1000 * globalState.pixelsPerSecond,
+                        top: 0,
+                        borderColor: '#4ade80',
+                        baseClass: 'bg-emerald-800',
+                        selectedClass: 'bg-emerald-600 ring-2 ring-emerald-400 z-10'
+                    });
+                    subtitleTrack.appendChild(clip);
+                });
+            }
+
+            const easings = { linear: t => t, easeInCubic: t => t * t * t, easeOutCubic: t => 1 - Math.pow(1 - t, 3), easeInOutCubic: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, easeOutBounce: t => { const n1 = 7.5625; const d1 = 2.75; if (t < 1 / d1) { return n1 * t * t; } else if (t < 2 / d1) { return n1 * (t -= 1.5 / d1) * t + 0.75; } else if (t < 2.5 / d1) { return n1 * (t -= 2.25 / d1) * t + 0.9375; } else { return n1 * (t -= 2.625 / d1) * t + 0.984375; } }, };
+            const drawBase = () => { ctx.fillStyle = globalState.bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height); };
+            const applyRotation = (el, x, y) => { ctx.translate(x, y); ctx.rotate(el.rotation * Math.PI / 180); }
+            
+            const drawTextWithStyles = (textToDraw, el, lineCallback) => {
+                ctx.font = `bold ${el.fontSize}px '${el.fontFamily}', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                const maxWidth = el.wrapMode === 'auto' ? canvas.width * 0.9 : el.width;
+                const lineHeight = el.fontSize * 1.2;
+
+                const initialLines = textToDraw.split('\n');
+                const finalLines = [];
+
+                initialLines.forEach(initialLine => {
+                    const words = initialLine.split(' ');
+                    let line = '';
+                    for (let n = 0; n < words.length; n++) {
+                        const testLine = line + words[n] + ' ';
+                        const metrics = ctx.measureText(testLine);
+                        if (metrics.width > maxWidth && n > 0) {
+                            finalLines.push(line.trim());
+                            line = words[n] + ' ';
+                        } else {
+                            line = testLine;
+                        }
+                    }
+                    finalLines.push(line.trim());
+                });
+
+                const totalHeight = (finalLines.length - 1) * lineHeight;
+                const startY = -totalHeight / 2;
+                const x = 0;
+
+                const drawLines = (isStroke) => {
+                    for (let i = 0; i < finalLines.length; i++) {
+                        const lineY = startY + (i * lineHeight);
+                        if (lineCallback) {
+                            lineCallback(finalLines[i], x, lineY, isStroke);
+                        } else {
+                            ctx[isStroke ? 'strokeText' : 'fillText'](finalLines[i], x, lineY);
+                        }
+                    }
+                };
+                
+                ctx.shadowOffsetX = el.shadowX; ctx.shadowOffsetY = el.shadowY; ctx.shadowBlur = el.shadowBlur; ctx.shadowColor = el.shadowColor;
+                ctx.fillStyle = el.textColor;
+                drawLines(false);
+
+                if (el.borderWidth > 0) {
+                    ctx.shadowColor = 'transparent';
+                    ctx.lineWidth = el.borderWidth;
+                    ctx.strokeStyle = el.borderColor;
+                    drawLines(true);
+                }
+            };
+            
+            const drawTextWordByWord = (textToDraw, el, wordCallback) => {
+                ctx.font = `bold ${el.fontSize}px '${el.fontFamily}', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const maxWidth = el.wrapMode === 'auto' ? canvas.width * 0.9 : el.width;
+                const lineHeight = el.fontSize * 1.2;
+                const spaceWidth = ctx.measureText(' ').width;
+
+                const initialLines = textToDraw.split('\n');
+                const finalLines = [];
+                initialLines.forEach(initialLine => {
+                    const words = initialLine.split(' ');
+                    let line = '';
+                    for (let n = 0; n < words.length; n++) {
+                        const testLine = line + words[n] + ' ';
+                        if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+                            finalLines.push(line.trim());
+                            line = words[n] + ' ';
+                        } else { line = testLine; }
+                    }
+                    finalLines.push(line.trim());
+                });
+
+                const totalHeight = (finalLines.length - 1) * lineHeight;
+                const startY = -totalHeight / 2;
+                let wordIndex = 0;
+
+                for (let i = 0; i < finalLines.length; i++) {
+                    const line = finalLines[i];
+                    const words = line.split(' ');
+                    const lineWidth = ctx.measureText(line).width;
+                    let currentX = -lineWidth / 2;
+
+                    for (const word of words) {
+                        const wordWidth = ctx.measureText(word).width;
+                        const wordCenterX = currentX + wordWidth / 2;
+                        const wordCenterY = startY + (i * lineHeight);
+                        wordCallback(word, wordCenterX, wordCenterY, wordIndex, words.length);
+                        currentX += wordWidth + spaceWidth;
+                        wordIndex++;
+                    }
+                }
+                return wordIndex; // Total words
+            };
+
+            const animationStyles = { 
+                none: (progress, el, easedProgress) => { ctx.save(); applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                fadeAndScale: (progress, el, easedProgress) => { ctx.save(); const scale = 0.8 + easedProgress * 0.2; ctx.globalAlpha = easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                slideIn: (progress, el, easedProgress) => { ctx.save(); const startX = -el.fontSize - (el.relativeX * canvas.width); const x = startX + (easedProgress * (el.relativeX * canvas.width - startX)); ctx.globalAlpha = easedProgress; applyRotation(el, x, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                typewriter: (progress, el, easedProgress) => { ctx.save(); applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); const len = Math.floor(el.text.length * easedProgress); const displayedText = el.text.substring(0, len); drawTextWithStyles(displayedText, el); ctx.restore(); }, 
+                typewriterEnhanced: (progress, el, easedProgress) => {
+                    ctx.save();
+                    applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height);
+                    const len = Math.floor(el.text.length * easedProgress);
+                    const displayedText = el.text.substring(0, len);
+                    let cursorVisible = true;
+                    if(progress < 1) cursorVisible = Math.floor(Date.now() / 400) % 2 === 0;
+
+                    drawTextWithStyles(displayedText, el, (line, x, y, isStroke) => {
+                         if (!isStroke) {
+                            ctx.textAlign = 'left';
+                            const lineMetrics = ctx.measureText(line);
+                            const startX = -lineMetrics.width / 2;
+                            ctx.fillText(line, startX, y);
+                            if (cursorVisible) {
+                                ctx.fillRect(startX + lineMetrics.width + 2, y - el.fontSize / 2, 4, el.fontSize);
+                            }
+                            ctx.textAlign = 'center';
+                        }
+                    });
+                    ctx.restore();
+                },
+                fadeInWord: (progress, el, easedProgress) => {
+                     ctx.save();
+                     applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height);
+                     const totalWords = drawTextWordByWord(el.text, el, (word, x, y, index, numWords) => {
+                         const wordProgress = Math.max(0, Math.min(1, (easedProgress * numWords) - index));
+                         ctx.save();
+                         ctx.globalAlpha = wordProgress;
+                         ctx.translate(x, y);
+                         drawTextWithStyles(word, el);
+                         ctx.restore();
+                     });
+                     ctx.restore();
+                },
+                bounceInWord: (progress, el, easedProgress) => {
+                     ctx.save();
+                     applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height);
+                     const totalWords = drawTextWordByWord(el.text, el, (word, x, y, index, numWords) => {
+                         const wordProgress = Math.max(0, Math.min(1, (easedProgress * numWords * 1.2) - (index * 1.2)));
+                         const bounceProgress = easings.easeOutBounce(wordProgress);
+                         const yOffset = (1 - bounceProgress) * -canvas.height / 2;
+                         ctx.save();
+                         ctx.globalAlpha = wordProgress;
+                         ctx.translate(x, y + yOffset);
+                         drawTextWithStyles(word, el);
+                         ctx.restore();
+                     });
+                     ctx.restore();
+                },
+                blurIn: (progress, el, easedProgress) => {
+                    ctx.save();
+                    const blurAmount = (1 - easedProgress) * 30;
+                    ctx.globalAlpha = easedProgress;
+                    ctx.filter = `blur(${blurAmount}px)`;
+                    applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height);
+                    drawTextWithStyles(el.text, el);
+                    ctx.restore();
+                },
+                riseUp: (progress, el, easedProgress) => { ctx.save(); const startY = canvas.height + el.fontSize; const y = startY - (easedProgress * (startY - (el.relativeY * canvas.height))); ctx.globalAlpha = easedProgress; applyRotation(el, el.relativeX * canvas.width, y); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                dropIn: (progress, el, easedProgress) => { ctx.save(); const startY = -el.fontSize; const y = startY + (easedProgress * ((el.relativeY * canvas.height) - startY)); ctx.globalAlpha = progress < 0.1 ? progress * 10 : 1; applyRotation(el, el.relativeX * canvas.width, y); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                rotateIn: (progress, el, easedProgress) => { ctx.save(); const angle = (1 - easedProgress) * -Math.PI / 2; const scale = 0.5 + easedProgress * 0.5; ctx.globalAlpha = easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.rotate(angle); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                fadeOut: (progress, el, easedProgress) => { ctx.save(); ctx.globalAlpha = 1 - easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                slideOut: (progress, el, easedProgress) => { ctx.save(); const x = (el.relativeX * canvas.width) + (easedProgress * (canvas.width - el.relativeX * canvas.width + el.fontSize*2)); ctx.globalAlpha = 1 - easedProgress; applyRotation(el, x, el.relativeY * canvas.height); drawTextWithStyles(el.text, el); ctx.restore(); }, 
+                scaleOut: (progress, el, easedProgress) => { ctx.save(); const scale = 1 - easedProgress; ctx.globalAlpha = 1 - easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); },
+                zoomOut: (progress, el, easedProgress) => { ctx.save(); const scale = 1 + easedProgress * 4; ctx.globalAlpha = 1 - easedProgress; applyRotation(el, el.relativeX * canvas.width, el.relativeY * canvas.height); ctx.scale(scale, scale); drawTextWithStyles(el.text, el); ctx.restore(); },
+                fall: (progress, el, easedProgress) => { ctx.save(); const y = (el.relativeY * canvas.height) + (easedProgress * (canvas.height - el.relativeY * canvas.height + el.fontSize * 2)); const rot = el.rotation + (easedProgress * 45 * (el.relativeX > 0.5 ? 1 : -1)); ctx.globalAlpha = 1-easedProgress; ctx.translate(el.relativeX * canvas.width, y); ctx.rotate(rot * Math.PI / 180); drawTextWithStyles(el.text, el); ctx.restore(); },
+            };
+
+            function drawSingleSubtitle(sub, time) {
+                const animDuration = 250; //ms
+                let alpha = 1.0;
+                let yOffset = 0;
+
+                // In Animation
+                if (time < sub.startTime + animDuration) {
+                    const progress = (time - sub.startTime) / animDuration;
+                    if(sub.inAnimation === 'fadeIn') alpha = progress;
+                    if(sub.inAnimation === 'slideUp') {
+                        alpha = progress;
+                        yOffset = (1 - progress) * (sub.fontSize * 0.5);
+                    }
+                }
+                // Out Animation
+                if (time > sub.endTime - animDuration) {
+                    const progress = (sub.endTime - time) / animDuration;
+                     if(sub.outAnimation === 'fadeIn' || sub.outAnimation === 'fadeInWord') alpha = progress; // fadeIn reversed is fadeOut
+                    if(sub.outAnimation === 'slideUp') {
+                        alpha = progress;
+                        yOffset = (1 - progress) * (sub.fontSize * 0.5);
+                    }
+                }
+                
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.font = `600 ${sub.fontSize}px '${sub.fontFamily}', sans-serif`;
+                ctx.textBaseline = 'bottom';
+                
+                const text = sub.text;
+                const x = sub.relativeX * canvas.width;
+                const y = (sub.relativeY * canvas.height) + yOffset;
+                const maxWidth = sub.wrapMode === 'auto' ? canvas.width * 0.95 : sub.width;
+                const lineHeight = sub.fontSize * 1.2;
+
+                const words = text.split(' ');
+                let line = '';
+                const lines = [];
+                let maxLineWidth = 0;
+
+                for (let n = 0; n < words.length; n++) {
+                    const testLine = line + words[n] + ' ';
+                    const metrics = ctx.measureText(testLine);
+                    if (metrics.width > maxWidth && n > 0) {
+                        lines.push(line.trim());
+                        maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line.trim()).width);
+                        line = words[n] + ' ';
+                    } else {
+                        line = testLine;
+                    }
+                }
+                lines.push(line.trim());
+                maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line.trim()).width);
+
+                const totalHeight = lines.length * lineHeight;
+                const startY = y - totalHeight;
+
+                if (sub.backgroundColor && sub.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+                    ctx.fillStyle = sub.backgroundColor;
+                    ctx.shadowColor = 'transparent';
+                    const bgPadding = 10;
+                    ctx.fillRect(x - maxLineWidth / 2 - bgPadding, startY - bgPadding + (lineHeight - sub.fontSize) / 2, maxLineWidth + (bgPadding * 2), totalHeight + (bgPadding * 2) - (lineHeight - sub.fontSize));
+                }
+                
+                ctx.textAlign = 'center';
+                ctx.shadowColor = sub.shadowColor;
+                ctx.shadowBlur = sub.shadowBlur;
+                ctx.shadowOffsetX = sub.shadowX;
+                ctx.shadowOffsetY = sub.shadowY;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const lineY = startY + (i * lineHeight) + lineHeight;
+                    ctx.fillStyle = sub.textColor;
+                    ctx.strokeStyle = sub.borderColor;
+                    ctx.lineWidth = sub.borderWidth;
+                    if (sub.borderWidth > 0) ctx.strokeText(lines[i], x, lineY);
+                    ctx.fillText(lines[i], x, lineY);
+                }
+                
+                ctx.restore();
+            }
+
+            const draw = (time) => {
+                drawBase();
+                textElements.forEach(el => {
+                    if (time < el.startTime) return; 
+                    const localTime = time - el.startTime;
+                    const totalLifetime = el.animationDuration + el.stayDuration + el.outAnimationDuration;
+                    if (localTime > totalLifetime && totalLifetime > 0) return;
+                    if (localTime <= el.animationDuration) { const progress = el.animationDuration > 0 ? localTime / el.animationDuration : 1; const easedProgress = (easings[el.animationEasing] || easings.linear)(progress); animationStyles[el.animationStyle](progress, el, easedProgress); } 
+                    else if (localTime <= el.animationDuration + el.stayDuration) { animationStyles['none'](1, el, 1); } 
+                    else { const outTime = localTime - (el.animationDuration + el.stayDuration); const progress = el.outAnimationDuration > 0 ? outTime / el.outAnimationDuration : 1; const easedProgress = (easings[el.outAnimationEasing] || easings.linear)(progress); animationStyles[el.outAnimationStyle](progress, el, easedProgress); }
+                });
+                if(globalState.subtitlesVisible) {
+                    subtitleElements.forEach(sub => {
+                        if (time >= sub.startTime && time <= sub.endTime) {
+                           drawSingleSubtitle(sub, time);
+                        }
+                    });
+                }
+            };
+            const updateTimelineUI = () => {
+                globalControls.currentTimeDisplay.textContent = (previewState.time / 1000).toFixed(1);
+                globalControls.totalTimeDisplay.textContent = (globalState.totalDuration / 1000).toFixed(1);
+                playhead.style.left = `${previewState.time / 1000 * globalState.pixelsPerSecond}px`;
+            };
+            const previewAnimationLoop = (timestamp) => {
+                if (!previewState.lastTimestamp) previewState.lastTimestamp = timestamp;
+                if (previewState.isPlaying) {
+                    const deltaTime = timestamp - previewState.lastTimestamp;
+                    previewState.time += deltaTime;
+                    if (previewState.time > globalState.totalDuration) previewState.time = 0;
+                }
+                previewState.lastTimestamp = timestamp;
+                draw(previewState.time);
+                updateTimelineUI();
+                animationFrameId = requestAnimationFrame(previewAnimationLoop);
+            };
+            const startPreviewAnimation = () => { if (animationFrameId) cancelAnimationFrame(animationFrameId); previewState.lastTimestamp = 0; animationFrameId = requestAnimationFrame(previewAnimationLoop); };
+            const setupMediaRecorder = () => {
+                const stream = canvas.captureStream(30);
+                const options = { mimeType: 'video/webm; codecs=vp9' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) { options.mimeType = 'video/webm; codecs=vp8'; if (!MediaRecorder.isTypeSupported(options.mimeType)) options.mimeType = 'video/webm'; }
+                mediaRecorder = new MediaRecorder(stream, options);
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    globalControls.downloadLink.href = URL.createObjectURL(blob);
+                    const filename = globalControls.outputFilename.value.trim() || 'pro_animation';
+                    globalControls.downloadLink.download = `${filename}.webm`;
+                    globalControls.downloadSection.classList.remove('hidden');
+                    globalControls.startBtn.disabled = false;
+                    globalControls.startBtnText.textContent = 'Record';
+                    globalControls.recordingIndicator.classList.add('hidden');
+                    previewState.isPlaying = true;
+                    globalControls.playIcon.classList.add('hidden');
+                    globalControls.pauseIcon.classList.remove('hidden');
+                    startPreviewAnimation();
+                };
+            };
+            
+            // --- Inspector Rendering ---
+            function renderClipInspector(el) {
+                inspectorContent.innerHTML = '';
+                inspectorContent.appendChild(clipInspectorTemplate.content.cloneNode(true));
+                
+                const inputs = {
+                    text: inspectorContent.querySelector('#text-input'),
+                    fontFamily: inspectorContent.querySelector('#font-family-select'),
+                    fontSize: inspectorContent.querySelector('#font-size'),
+                    textColor: inspectorContent.querySelector('#text-color'),
+                    borderWidth: inspectorContent.querySelector('#border-width'),
+                    borderColor: inspectorContent.querySelector('#border-color'),
+                    positionX: inspectorContent.querySelector('#position-x'),
+                    positionY: inspectorContent.querySelector('#position-y'),
+                    rotation: inspectorContent.querySelector('#rotation'),
+                    rotationInput: inspectorContent.querySelector('#rotation-input'),
+                    startTime: inspectorContent.querySelector('#start-time'),
+                    animationStyle: inspectorContent.querySelector('#animation-style'),
+                    animationEasing: inspectorContent.querySelector('#animation-easing'),
+                    animationDuration: inspectorContent.querySelector('#animation-duration'),
+                    stayDuration: inspectorContent.querySelector('#stay-duration'),
+                    outAnimationStyle: inspectorContent.querySelector('#out-animation-style'),
+                    outAnimationEasing: inspectorContent.querySelector('#out-animation-easing'),
+                    outAnimationDuration: inspectorContent.querySelector('#out-animation-duration'),
+                    shadowX: inspectorContent.querySelector('#shadow-x'),
+                    shadowY: inspectorContent.querySelector('#shadow-y'),
+                    shadowBlur: inspectorContent.querySelector('#shadow-blur'),
+                    shadowColor: inspectorContent.querySelector('#shadow-color'),
+                    wrapMode: inspectorContent.querySelector('#text-wrap-mode'),
+                    width: inspectorContent.querySelector('#text-width'),
+                };
+                
+                // Populate dynamic selects
+                populateSelect(inputs.fontFamily, fonts.reduce((o, key) => ({ ...o, [key]: key }), {}));
+                populateSelect(inputs.animationStyle, inAnimations);
+                populateSelect(inputs.outAnimationStyle, outAnimations);
+                populateSelect(inputs.animationEasing, easingFunctions);
+                populateSelect(inputs.outAnimationEasing, easingFunctions);
+
+                // Populate values
+                Object.keys(inputs).forEach(key => {
+                    if(!inputs[key]) return;
+                    if (['rotation', 'rotationInput'].includes(key)) {
+                        inputs.rotation.value = el.rotation;
+                        inputs.rotationInput.value = el.rotation;
+                    } else if (key === 'positionX') {
+                        inputs.positionX.value = Math.round(el.relativeX * canvas.width);
+                    } else if (key === 'positionY') {
+                        inputs.positionY.value = Math.round(el.relativeY * canvas.height);
+                    } else if (['startTime', 'animationDuration', 'stayDuration', 'outAnimationDuration'].includes(key)) {
+                        inputs[key].value = (el[key] / 1000).toFixed(2);
+                    } else {
+                         inputs[key].value = el[key];
+                    }
+                });
+
+                inputs.width.disabled = el.wrapMode === 'auto';
+
+                // Add event listeners
+                Object.entries(inputs).forEach(([key, inputEl]) => {
+                    inputEl.addEventListener('input', e => {
+                        let value = e.target.value;
+                         switch(key) {
+                            case 'rotation': el.rotation = parseInt(value); inputs.rotationInput.value = value; break;
+                            case 'rotationInput': el.rotation = parseInt(value); inputs.rotation.value = value; break;
+                            case 'positionX': el.relativeX = parseInt(value) / canvas.width; break;
+                            case 'positionY': el.relativeY = parseInt(value) / canvas.height; break;
+                            case 'startTime': case 'animationDuration': case 'stayDuration': case 'outAnimationDuration': el[key] = parseFloat(value) * 1000; renderTimeline(); break;
+                            case 'wrapMode': el.wrapMode = value; inputs.width.disabled = value === 'auto'; break;
+                            case 'text': el.text = value; renderLayersList(); renderTimeline(); break;
+                            default: el[key] = (inputEl.type === 'number' || inputEl.type === 'range') ? parseInt(value) : value; break;
+                        }
+                    });
+                });
+
+                // Tab logic
+                const inspector = inspectorContent;
+                inspector.querySelectorAll('[data-tab]').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        inspector.querySelectorAll('[data-tab]').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        inspector.querySelectorAll('[data-tab-content]').forEach(panel => panel.classList.add('hidden'));
+                        inspector.querySelector(`[data-tab-content="${tab.dataset.tab}"]`).classList.remove('hidden');
+                    });
+                });
+            }
+
+            function renderSubtitleInspector() {
+                inspectorContent.innerHTML = '';
+                inspectorContent.appendChild(subtitleInspectorTemplate.content.cloneNode(true));
+
+                const mainContent = inspectorContent.querySelector('#subtitle-inspector-main-content');
+                const multiSelectPlaceholder = inspectorContent.querySelector('#subtitle-inspector-multi-select-placeholder');
+                const savePresetBtn = inspectorContent.querySelector('#subtitle-save-preset-btn');
+                const presetSelect = inspectorContent.querySelector('#subtitle-preset-select');
+                const deletePresetBtn = inspectorContent.querySelector('#subtitle-delete-preset-btn');
+                
+                loadSubtitlePresets();
+
+                if (selectedIds.length > 1) {
+                    mainContent.classList.add('hidden');
+                    multiSelectPlaceholder.classList.remove('hidden');
+                    multiSelectPlaceholder.querySelector('p').textContent = `${selectedIds.length} subtitles selected. Apply a preset to edit them all at once.`;
+                    savePresetBtn.disabled = true;
+                } else {
+                    mainContent.classList.remove('hidden');
+                    multiSelectPlaceholder.classList.add('hidden');
+                    savePresetBtn.disabled = false;
+                    
+                    const sub = subtitleElements.find(s => s.id === selectedIds[0]);
+                    if (!sub) return;
+
+                    const subFontSelect = inspectorContent.querySelector('#subtitle-font-family');
+                    fonts.forEach(font => {
+                        const option = document.createElement('option');
+                        option.value = font; option.textContent = font;
+                        option.className = `font-${font.toLowerCase().replace(' ', '-')}`;
+                        subFontSelect.appendChild(option);
+                    });
+                     const subInAnim = inspectorContent.querySelector('#subtitle-in-animation');
+                     const subOutAnim = inspectorContent.querySelector('#subtitle-out-animation');
+                     populateSelect(subInAnim, subtitleAnimations);
+                     populateSelect(subOutAnim, subtitleAnimations);
+
+                    const inputs = {
+                        startTime: inspectorContent.querySelector('#subtitle-start-time'),
+                        endTime: inspectorContent.querySelector('#subtitle-end-time'),
+                        text: inspectorContent.querySelector('#subtitle-text'),
+                        fontFamily: inspectorContent.querySelector('#subtitle-font-family'),
+                        fontSize: inspectorContent.querySelector('#subtitle-font-size'),
+                        textColor: inspectorContent.querySelector('#subtitle-text-color'),
+                        borderWidth: inspectorContent.querySelector('#subtitle-border-width'),
+                        borderColor: inspectorContent.querySelector('#subtitle-border-color'),
+                        bgNone: inspectorContent.querySelector('#subtitle-bg-none'),
+                        backgroundColor: inspectorContent.querySelector('#subtitle-bg-color'),
+                        positionX: inspectorContent.querySelector('#subtitle-position-x'),
+                        positionY: inspectorContent.querySelector('#subtitle-position-y'),
+                        shadowX: inspectorContent.querySelector('#subtitle-shadow-x'),
+                        shadowY: inspectorContent.querySelector('#subtitle-shadow-y'),
+                        shadowBlur: inspectorContent.querySelector('#subtitle-shadow-blur'),
+                        shadowColor: inspectorContent.querySelector('#subtitle-shadow-color'),
+                        inAnimation: inspectorContent.querySelector('#subtitle-in-animation'),
+                        outAnimation: inspectorContent.querySelector('#subtitle-out-animation'),
+                        wrapMode: inspectorContent.querySelector('#subtitle-wrap-mode'),
+                        width: inspectorContent.querySelector('#subtitle-width'),
+                    };
+
+                    inputs.startTime.value = (sub.startTime / 1000).toFixed(2);
+                    inputs.endTime.value = (sub.endTime / 1000).toFixed(2);
+                    inputs.text.value = sub.text;
+                    inputs.fontFamily.value = sub.fontFamily;
+                    inputs.fontSize.value = sub.fontSize;
+                    inputs.textColor.value = sub.textColor;
+                    inputs.borderWidth.value = sub.borderWidth;
+                    inputs.borderColor.value = sub.borderColor;
+                    inputs.bgNone.checked = !sub.backgroundColor || sub.backgroundColor === 'rgba(0, 0, 0, 0)';
+                    inputs.backgroundColor.value = sub.backgroundColor || '#000000';
+                    inputs.backgroundColor.disabled = inputs.bgNone.checked;
+                    inputs.positionX.value = Math.round(sub.relativeX * canvas.width);
+                    inputs.positionY.value = Math.round(sub.relativeY * canvas.height);
+                    inputs.shadowX.value = sub.shadowX;
+                    inputs.shadowY.value = sub.shadowY;
+                    inputs.shadowBlur.value = sub.shadowBlur;
+                    inputs.shadowColor.value = sub.shadowColor;
+                    inputs.inAnimation.value = sub.inAnimation;
+                    inputs.outAnimation.value = sub.outAnimation;
+                    inputs.wrapMode.value = sub.wrapMode;
+                    inputs.width.value = sub.width;
+                    inputs.width.disabled = sub.wrapMode === 'auto';
+                    
+                    Object.entries(inputs).forEach(([key, inputEl]) => {
+                        const eventType = inputEl.type === 'checkbox' ? 'change' : 'input';
+                        inputEl.addEventListener(eventType, e => {
+                            let value = e.target.value;
+                            switch(key) {
+                                case 'startTime': sub.startTime = parseFloat(value) * 1000; renderTimeline(); break;
+                                case 'endTime': sub.endTime = parseFloat(value) * 1000; renderTimeline(); break;
+                                case 'text': sub.text = value; renderTimeline(); renderSubtitlesList(); break;
+                                case 'fontSize': case 'borderWidth': case 'shadowX': case 'shadowY': case 'shadowBlur': case 'width': sub[key] = parseInt(value); break;
+                                case 'positionX': sub.relativeX = parseInt(value) / canvas.width; break;
+                                case 'positionY': sub.relativeY = parseInt(value) / canvas.height; break;
+                                case 'wrapMode':
+                                    sub.wrapMode = value;
+                                    inputs.width.disabled = value === 'auto';
+                                    break;
+                                case 'bgNone':
+                                    inputs.backgroundColor.disabled = e.target.checked;
+                                    sub.backgroundColor = e.target.checked ? 'rgba(0, 0, 0, 0)' : inputs.backgroundColor.value;
+                                    break;
+                                default: sub[key] = value; break;
+                            }
+                        });
+                    });
+
+                    const inspector = inspectorContent;
+                    inspector.querySelectorAll('[data-tab]').forEach(tab => {
+                        tab.addEventListener('click', () => {
+                            inspector.querySelectorAll('[data-tab]').forEach(t => t.classList.remove('active'));
+                            tab.classList.add('active');
+                            inspector.querySelectorAll('[data-tab-content]').forEach(panel => panel.classList.add('hidden'));
+                            inspector.querySelector(`[data-tab-content="${tab.dataset.tab}"]`).classList.remove('hidden');
+                        });
+                    });
+                }
+
+                savePresetBtn.addEventListener('click', saveSubtitlePreset);
+                deletePresetBtn.addEventListener('click', deleteSubtitlePreset);
+                presetSelect.addEventListener('change', applySubtitlePreset);
+                deletePresetBtn.disabled = presetSelect.value === "";
+                presetSelect.addEventListener('change', () => deletePresetBtn.disabled = presetSelect.value === "");
+
+            }
+            // --- Subtitle Logic ---
+            const SUBTITLE_PRESET_KEY = 'proTextAnimSubtitlePresets';
+            function loadSubtitlePresets() {
+                subtitlePresets = JSON.parse(localStorage.getItem(SUBTITLE_PRESET_KEY)) || [];
+                const select = inspectorContent.querySelector('#subtitle-preset-select');
+                if(!select) return;
+                select.innerHTML = '<option value="">Apply a Preset...</option>';
+                subtitlePresets.forEach(p => { select.innerHTML += `<option value="${p.name}">${p.name}</option>`; });
+            }
+            function saveSubtitlePreset() {
+                if(selectedIds.length !== 1) return;
+                const sub = subtitleElements.find(s => s.id === selectedIds[0]);
+                if(!sub) return;
+
+                showPromptModal("Save Subtitle Preset", "Enter a name for your preset:", sub.text.substring(0, 20), (name) => {
+                    if (!name || !name.trim()) return;
+                    const presetSettings = {
+                        fontFamily: sub.fontFamily, fontSize: sub.fontSize, textColor: sub.textColor, borderWidth: sub.borderWidth, borderColor: sub.borderColor,
+                        backgroundColor: sub.backgroundColor, relativeX: sub.relativeX, relativeY: sub.relativeY,
+                        shadowX: sub.shadowX, shadowY: sub.shadowY, shadowBlur: sub.shadowBlur, shadowColor: sub.shadowColor,
+                        inAnimation: sub.inAnimation, outAnimation: sub.outAnimation,
+                        wrapMode: sub.wrapMode, width: sub.width,
+                    };
+                    const existingIndex = subtitlePresets.findIndex(p => p.name === name);
+                    if (existingIndex > -1) {
+                        subtitlePresets[existingIndex].settings = presetSettings;
+                    } else {
+                        subtitlePresets.push({ name, settings: presetSettings });
+                    }
+                    localStorage.setItem(SUBTITLE_PRESET_KEY, JSON.stringify(subtitlePresets));
+                    loadSubtitlePresets();
+                });
+            }
+             function applySubtitlePreset(e) {
+                const presetName = e.target.value;
+                if (!presetName || selectedIds.length === 0) return;
+                const preset = subtitlePresets.find(p => p.name === presetName);
+                if (preset) {
+                    selectedIds.forEach(id => {
+                        const subToUpdate = subtitleElements.find(sub => sub.id === id);
+                        if(subToUpdate) {
+                            Object.assign(subToUpdate, preset.settings);
+                        }
+                    });
+                    updateControlsUI();
+                    renderTimeline();
+                }
+                e.target.value = ""; // Reset dropdown
+            }
+            function deleteSubtitlePreset() {
+                const select = inspectorContent.querySelector('#subtitle-preset-select');
+                const presetName = select.value;
+                if (!presetName) return;
+                showConfirmModal(`Delete Preset?`, `Are you sure you want to delete the preset "${presetName}"?`, (confirmed) => {
+                    if (confirmed) {
+                        subtitlePresets = subtitlePresets.filter(p => p.name !== presetName);
+                        localStorage.setItem(SUBTITLE_PRESET_KEY, JSON.stringify(subtitlePresets));
+                        loadSubtitlePresets();
+                        select.value = "";
+                        inspectorContent.querySelector('#subtitle-delete-preset-btn').disabled = true;
+                    }
+                });
+            }
+
+            function srtTimeToMs(timeString) { const parts = timeString.split(/[:,]/); return parseInt(parts[0],10)*3600000 + parseInt(parts[1],10)*60000 + parseInt(parts[2],10)*1000 + parseInt(parts[3],10); }
+            function parseSrt(data) {
+                const srtRegex = /(\d+)\r?\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\r?\n([\s\S]*?)(?=\r?\n\r?\n|$)/g;
+                let match;
+                while ((match = srtRegex.exec(data)) !== null) {
+                    subtitleElements.push({
+                        id: Date.now() + Math.random(), startTime: srtTimeToMs(match[2]), endTime: srtTimeToMs(match[3]),
+                        text: match[4].replace(/(\r\n|\n|\r)/gm, " ").trim(),
+                        fontFamily: 'Inter', fontSize: 48, textColor: '#FFFFFF', borderWidth: 2, borderColor: '#000000',
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)', relativeX: 0.5, relativeY: 0.95,
+                        shadowX: 0, shadowY: 2, shadowBlur: 4, shadowColor: '#000000',
+                        inAnimation: 'fadeIn', outAnimation: 'fadeIn',
+                        wrapMode: 'auto', width: canvas.width * 0.95,
+                    });
+                }
+                renderSubtitlesList(); renderTimeline();
+            }
+
+            // --- Modal Implementation ---
+            function showConfirmModal(title, text, callback) {
+                modalElements.title.textContent = title;
+                modalElements.text.textContent = text;
+                modalElements.input.classList.add('hidden');
+                modalElements.text.classList.remove('hidden');
+                
+                const confirmHandler = () => {
+                    cleanup();
+                    callback(true);
+                };
+                const cancelHandler = () => {
+                    cleanup();
+                    callback(false);
+                };
+                const cleanup = () => {
+                    modalElements.confirmBtn.removeEventListener('click', confirmHandler);
+                    modalElements.cancelBtn.removeEventListener('click', cancelHandler);
+                    modalElements.backdrop.classList.add('hidden');
+                }
+                
+                modalElements.confirmBtn.addEventListener('click', confirmHandler, { once: true });
+                modalElements.cancelBtn.addEventListener('click', cancelHandler, { once: true });
+                modalElements.backdrop.classList.remove('hidden');
+            }
+
+            function showPromptModal(title, text, value, callback) {
+                modalElements.title.textContent = title;
+                modalElements.text.textContent = text;
+                modalElements.input.value = value;
+                modalElements.input.classList.remove('hidden');
+                modalElements.text.classList.remove('hidden');
+
+                const confirmHandler = () => {
+                    cleanup();
+                    callback(modalElements.input.value);
+                };
+                const cancelHandler = () => {
+                    cleanup();
+                    callback(null);
+                };
+                const cleanup = () => {
+                    modalElements.confirmBtn.removeEventListener('click', confirmHandler);
+                    modalElements.cancelBtn.removeEventListener('click', cancelHandler);
+                    modalElements.backdrop.classList.add('hidden');
+                }
+                
+                modalElements.confirmBtn.addEventListener('click', confirmHandler, { once: true });
+                modalElements.cancelBtn.addEventListener('click', cancelHandler, { once: true });
+                modalElements.backdrop.classList.remove('hidden');
+                setTimeout(() => modalElements.input.select(), 100);
+            }
+
+            // --- Event Listeners ---
+            globalControls.addLayerBtn.addEventListener('click', addElement);
+            globalControls.deleteLayerBtn.addEventListener('click', deleteElement);
+            globalControls.addSubtitleBtn.addEventListener('click', addSubtitleElement);
+            globalControls.deleteSubtitleBtn.addEventListener('click', deleteSubtitleElement);
+            globalControls.importSrtBtn.addEventListener('click', () => { const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = '.srt'; fileInput.onchange = (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => parseSrt(e.target.result); reader.readAsText(file); } }; fileInput.click(); });
+            globalControls.bgColor.addEventListener('input', (e) => globalState.bgColor = e.target.value);
+            globalControls.exportResolution.addEventListener('change', (e) => { const [width, height] = e.target.value.split('x').map(Number); setCanvasResolution(width, height); });
+            globalControls.totalDurationInput.addEventListener('input', (e) => { globalState.totalDuration = Math.max(1000, parseInt(e.target.value, 10) * 1000); updateTimelineUI(); renderTimeline(); renderRuler(); });
+            globalControls.previewPlayPauseBtn.addEventListener('click', () => { previewState.isPlaying = !previewState.isPlaying; if (previewState.isPlaying) { previewState.lastTimestamp = 0; globalControls.playIcon.classList.add('hidden'); globalControls.pauseIcon.classList.remove('hidden'); } else { globalControls.playIcon.classList.remove('hidden'); globalControls.pauseIcon.classList.add('hidden'); } });
+            timelineScrollContainer.addEventListener('mousedown', (e) => { if (e.target.closest('.timeline-clip')) return; let isScrubbing = true; previewState.isPlaying = false; globalControls.playIcon.classList.remove('hidden'); globalControls.pauseIcon.classList.add('hidden'); handleScrub(e); const onMouseMove = (moveEvent) => { if (isScrubbing) { handleScrub(moveEvent); } }; const onMouseUp = () => { isScrubbing = false; window.removeEventListener('mousemove', onMouseMove); }; window.addEventListener('mousemove', onMouseMove); window.addEventListener('mouseup', onMouseUp, {once: true}); });
+            document.querySelectorAll('[data-left-tab]').forEach(tab => { tab.addEventListener('click', () => { document.querySelectorAll('[data-left-tab]').forEach(t => t.classList.remove('active')); tab.classList.add('active'); document.querySelectorAll('.left-tab-panel').forEach(panel => panel.classList.add('hidden')); document.getElementById(`left-tab-${tab.dataset.leftTab}`).classList.remove('hidden'); }); });
+            globalControls.toggleSubtitleVisibilityBtn.addEventListener('click', () => {
+                globalState.subtitlesVisible = !globalState.subtitlesVisible;
+                globalControls.subtitleVisibleIcon.classList.toggle('hidden', !globalState.subtitlesVisible);
+                globalControls.subtitleHiddenIcon.classList.toggle('hidden', globalState.subtitlesVisible);
+                subtitleTrack.style.opacity = globalState.subtitlesVisible ? '1' : '0.5';
+            });
+
+            globalControls.startBtn.addEventListener('click', () => {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                previewState.isPlaying = false;
+                globalControls.playIcon.classList.remove('hidden');
+                globalControls.pauseIcon.classList.add('hidden');
+                recordedChunks = [];
+                globalControls.downloadSection.classList.add('hidden');
+                setupMediaRecorder();
+                mediaRecorder.start();
+                globalControls.startBtn.disabled = true;
+                globalControls.startBtnText.textContent = 'Recording...';
+                globalControls.recordingIndicator.classList.remove('hidden');
+                const recordStartTime = Date.now();
+                function recordLoop() {
+                    const elapsedTime = Date.now() - recordStartTime;
+                    if (elapsedTime >= globalState.totalDuration) { 
+                        draw(elapsedTime); 
+                        if (mediaRecorder.state === 'recording') mediaRecorder.stop(); 
+                        return; 
+                    }
+                    draw(elapsedTime);
+                    updateTimelineUI(); // Update playhead during recording
+                    playhead.style.left = `${elapsedTime / 1000 * globalState.pixelsPerSecond}px`;
+                    requestAnimationFrame(recordLoop);
+                }
+                recordLoop();
+            });
+
+            const setCanvasResolution = (width, height) => {
+                canvas.width = width; canvas.height = height;
+                updateControlsUI(); 
+            };
+
+            function handleScrub(e) {
+                const rect = timelineRuler.getBoundingClientRect();
+                const scrollLeft = timelineScrollContainer.scrollLeft;
+                const clickX = e.clientX - rect.left + scrollLeft;
+                const newTime = (clickX / globalState.pixelsPerSecond) * 1000;
+                previewState.time = Math.max(0, Math.min(newTime, globalState.totalDuration));
+                if (!previewState.isPlaying) { draw(previewState.time); updateTimelineUI(); }
+            }
+
+            // --- Initial Kick-off ---
+            function initialize() {
+                setCanvasResolution(1280, 720);
+                addElement();
+                handleSelection(textElements[0].id, 'clip', false, false);
+                renderRuler();
+                startPreviewAnimation();
+            }
+
+            initialize();
+        });
+    </script>
+</body>
+</html>
+
